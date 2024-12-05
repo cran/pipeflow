@@ -12,7 +12,7 @@
 
 
 
-<title>Advanced: How to use pipeflow with split data sets</title>
+<title>Combining pipelines</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -5330,26 +5330,6 @@ HTMLWidgets.widget({
   
 });
 </script>
-<style type="text/css">@layer htmltools {
-.html-fill-container {
-display: flex;
-flex-direction: column;
-
-min-height: 0;
-min-width: 0;
-}
-.html-fill-container > .html-fill-item {
-
-flex: 1 1 auto;
-min-height: 0;
-min-width: 0;
-}
-.html-fill-container > :not(.html-fill-item) {
-
-flex: 0 0 auto;
-}
-}
-</style>
 
 <style type="text/css">
 code{white-space: pre-wrap;}
@@ -5659,337 +5639,267 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Advanced: How to use pipeflow with split
-data sets</h1>
+<h1 class="title toc-ignore">Combining pipelines</h1>
 
 
 <div id="TOC">
 <ul>
-<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
-<li><a href="#define-pipeline" id="toc-define-pipeline">Define
-pipeline</a></li>
-<li><a href="#split-data-set" id="toc-split-data-set">Split data
-set</a></li>
-<li><a href="#combine-output" id="toc-combine-output">Combine
-output</a></li>
+<li><a href="#define-two-pipelines" id="toc-define-two-pipelines">Define
+two pipelines</a></li>
+<li><a href="#combine-pipelines" id="toc-combine-pipelines">Combine
+pipelines</a>
+<ul>
+<li><a href="#relative-indexing" id="toc-relative-indexing">Relative
+indexing</a></li>
+</ul></li>
+<li><a href="#run-combined-pipeline" id="toc-run-combined-pipeline">Run
+combined pipeline</a></li>
 </ul>
 </div>
 
-<div id="motivation" class="section level3">
-<h3>Motivation</h3>
-<p>A common scenario is to split a data set into subsets and then apply
-the same analysis to each part. In context of pipelines, this means that
-we would like to apply the same pipeline multiple times to each data
-subset. In additon, we may then want to combine parts of the individual
-output. As we will see, <code>pipeflow</code> provides a built-in
-function to handle this scenario.</p>
-</div>
-<div id="define-pipeline" class="section level3">
-<h3>Define pipeline</h3>
-<p>Let’s first define our pipeline, which, to keep matters simple, just
-fits a linear model and outputs the model coefficients.</p>
+<p>The possibility to combine pipelines basically allows to modularize
+the pipeline creation process. This is especially useful when you have a
+set of pipelines that are used in different contexts and you want to
+avoid code duplication.</p>
+<p>In this vignette we will also introduce the pipeflow alias functions,
+that is, for each member function of a pipeline, there is an alias
+function, which allows to create chain pipeline steps using R’s native
+pipe operator <code>|&gt;</code>. For example, the <code>add</code>
+function has an alias <code>pipe_add</code> (see below).</p>
+<div id="define-two-pipelines" class="section level3">
+<h3>Define two pipelines</h3>
+<p>Let’s define one pipeline that is used for data_preprocessing and one
+that does the modeling.</p>
+<p>Data preprocessing pipeline:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>        <span class="st">&quot;my-pipeline&quot;</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;x&quot;</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;y&quot;</span></span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>        ) {</span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>        }</span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>        <span class="st">&quot;coefs&quot;</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>            <span class="at">fit =</span> <span class="sc">~</span>fit</span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>        ) {</span>
-<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>            <span class="fu">coefficients</span>(fit)</span>
-<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>        },</span>
-<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>        <span class="at">keepOut =</span> <span class="cn">TRUE</span></span>
-<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>    )</span></code></pre></div>
-<p>So our pipeline looks like this:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>pip</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#      step depends    out keepOut  group  state</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># 1:   data         [NULL]   FALSE   data    New</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 2:    fit    data [NULL]   FALSE    fit    New</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 3:  coefs     fit [NULL]    TRUE  coefs    New</span></span></code></pre></div>
-<p>Or graphically:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> <span class="fu">c</span>(pip<span class="sc">$</span><span class="fu">get_graph</span>(), <span class="fu">list</span>(<span class="at">height =</span> <span class="dv">100</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>)</span></code></pre></div>
-<div id="htmlwidget-bf909260e8861dbd642a" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-bf909260e8861dbd642a">{"x":{"nodes":{"id":[1,2,3],"label":["data","fit","coefs"],"group":["data","fit","coefs"],"shape":["database","box","circle"],"color":["lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2],"to":[2,3],"arrows":["to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":["data","fit","coefs"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<p>We use the <code>iris</code> data set as our working example.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">head</span>(iris)</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co">#   Sepal.Length Sepal.Width Petal.Length Petal.Width Species</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># 1          5.1         3.5          1.4         0.2  setosa</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># 2          4.9         3.0          1.4         0.2  setosa</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 3          4.7         3.2          1.3         0.2  setosa</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 4          4.6         3.1          1.5         0.2  setosa</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 5          5.0         3.6          1.4         0.2  setosa</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># 6          5.4         3.9          1.7         0.4  setosa</span></span></code></pre></div>
-<p>First, we apply the pipeline to the whole data set.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(iris)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Sepal.Length&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Sepal.Width&quot;</span>))</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.544] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.545] Step 1/3 data</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.548] Step 2/3 fit</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.552] Step 3/3 coefs</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.553] Finished execution of steps.</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.554] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co"># $coefs</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#    3.4189468   -0.0618848</span></span></code></pre></div>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>pip1 <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>        <span class="st">&quot;preprocessing&quot;</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="at">data =</span> airquality</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>        <span class="st">&quot;data_prep&quot;</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>data) {</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>            <span class="fu">replace</span>(data, <span class="st">&quot;Temp.Celsius&quot;</span>, (data[, <span class="st">&quot;Temp&quot;</span>] <span class="sc">-</span> <span class="dv">32</span>) <span class="sc">*</span> <span class="dv">5</span><span class="sc">/</span><span class="dv">9</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>        }</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>        <span class="st">&quot;standardize&quot;</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>        <span class="cf">function</span>(</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>        ) {</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>            data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>            data</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>        }</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>    )</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>pip1</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#           step   depends    out keepOut       group  state</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;    &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># 1:        data           [NULL]   FALSE        data    New</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 2:   data_prep      data [NULL]   FALSE   data_prep    New</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 3: standardize data_prep [NULL]   FALSE standardize    New</span></span></code></pre></div>
+<p>Modeling pipeline:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip2 <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>        <span class="st">&quot;modeling&quot;</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>        <span class="at">data =</span> airquality</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        <span class="cf">function</span>(</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp&quot;</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>        ) {</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>        }</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>        <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>        <span class="cf">function</span>(</span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>            <span class="at">model =</span> <span class="sc">~</span>fit,</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp&quot;</span>,</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>,</span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>        ) {</span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>            coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>            <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>                <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>                <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a>                <span class="fu">labs</span>(<span class="at">title =</span> title)</span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a>        }</span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>    )</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip2</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co">#      step  depends    out keepOut  group  state</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;   &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># 1:   data          [NULL]   FALSE   data    New</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 2:    fit     data [NULL]   FALSE    fit    New</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 3:   plot fit,data [NULL]   FALSE   plot    New</span></span></code></pre></div>
+<p>Graphically, the two pipelines look as follows:</p>
+<div id="htmlwidget-c7311104f6c63c6b12cb" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c7311104f6c63c6b12cb">{"x":{"nodes":{"id":[1,2,3],"label":["data","data_prep","standardize"],"group":["data","data_prep","standardize"],"shape":["database","database","box"],"color":["lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2],"to":[2,3],"arrows":["to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-c989d3ad7a6c26f5804d" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c989d3ad7a6c26f5804d">{"x":{"nodes":{"id":[1,2,3],"label":["data","fit","plot"],"group":["data","fit","plot"],"shape":["database","box","box"],"color":["lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,1,2],"to":[2,3,3],"arrows":["to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 </div>
-<div id="split-data-set" class="section level3">
-<h3>Split data set</h3>
-<p>Next, we want to apply the pipeline to each species separately. One
-way to do this would be to use R’s <code>split</code> function. We can
-split it by the <code>Species</code> column and then run the pipeline
-for each subset. For example:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>run_pipeline <span class="ot">&lt;-</span> <span class="cf">function</span>(data) {</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    pip<span class="sc">$</span><span class="fu">set_data</span>(data)</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>}</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">split</span>(iris, iris<span class="sc">$</span>Species), <span class="at">FUN =</span> run_pipeline)</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.644] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.645] Step 1/3 data</span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.648] Step 2/3 fit</span></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.651] Step 3/3 coefs</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.653] Finished execution of steps.</span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.654] Done.</span></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.658] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.659] Step 1/3 data</span></span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.662] Step 2/3 fit</span></span>
-<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.665] Step 3/3 coefs</span></span>
-<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.667] Finished execution of steps.</span></span>
-<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.667] Done.</span></span>
-<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.670] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.671] Step 1/3 data</span></span>
-<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.674] Step 2/3 fit</span></span>
-<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.677] Step 3/3 coefs</span></span>
-<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.678] Finished execution of steps.</span></span>
-<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.679] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>results</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># $setosa</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># $setosa$coefs</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#   -0.5694327    0.7985283 </span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># $versicolor</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># $versicolor$coefs</span></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#    0.8721460    0.3197193 </span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># $virginica</span></span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># $virginica$coefs</span></span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co">#    1.4463054    0.2318905</span></span></code></pre></div>
-<p>Unfortunately, with this approach we had to create additional code
-that had to be run outside the pipeline framework. Let’s now see how to
-handle this scenario within the pipeline framework.</p>
-<p>As a reminder, our pipeline looks like this:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#      step depends                 out keepOut  group  state</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt;              &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># 1:   data          &lt;data.frame[50x5]&gt;   FALSE   data   Done</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># 2:    fit    data            &lt;lm[12]&gt;   FALSE    fit   Done</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># 3:  coefs     fit 1.4463054,0.2318905    TRUE  coefs   Done</span></span></code></pre></div>
-<p>To deal with split data sets, we use the built-in function
-<code>set_data_split</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>splitData <span class="ot">&lt;-</span> <span class="fu">split</span>(iris, iris<span class="sc">$</span>Species)</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data_split</span>(splitData)</span></code></pre></div>
-<p>This function actually transforms the pipeline:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#                step         depends                 out keepOut      group    state</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#              &lt;char&gt;          &lt;list&gt;              &lt;list&gt;  &lt;lgcl&gt;     &lt;char&gt;   &lt;char&gt;</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># 1:      data.setosa                              [NULL]   FALSE     setosa      New</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co"># 2:       fit.setosa     data.setosa            &lt;lm[12]&gt;   FALSE     setosa Outdated</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># 3:     coefs.setosa      fit.setosa 1.4463054,0.2318905    TRUE     setosa Outdated</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># 4:  data.versicolor                              [NULL]   FALSE versicolor      New</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># 5:   fit.versicolor data.versicolor            &lt;lm[12]&gt;   FALSE versicolor Outdated</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co"># 6: coefs.versicolor  fit.versicolor 1.4463054,0.2318905    TRUE versicolor Outdated</span></span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co"># 7:   data.virginica                              [NULL]   FALSE  virginica      New</span></span>
-<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co"># 8:    fit.virginica  data.virginica            &lt;lm[12]&gt;   FALSE  virginica Outdated</span></span>
-<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co"># 9:  coefs.virginica   fit.virginica 1.4463054,0.2318905    TRUE  virginica Outdated</span></span></code></pre></div>
-<p>As we can see, the pipeline now has replicated itself for each data
-subset.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> pip<span class="sc">$</span><span class="fu">get_graph</span>()) <span class="sc">|&gt;</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>, <span class="at">sortMethod =</span> <span class="st">&quot;directed&quot;</span>)</span></code></pre></div>
-<div class="visNetwork html-widget html-fill-item" id="htmlwidget-5c46b36f7173463e3a9e" style="width:288px;height:288px;"></div>
-<script type="application/json" data-for="htmlwidget-5c46b36f7173463e3a9e">{"x":{"nodes":{"id":[1,2,3,4,5,6,7,8,9],"label":["data.setosa","fit.setosa","coefs.setosa","data.versicolor","fit.versicolor","coefs.versicolor","data.virginica","fit.virginica","coefs.virginica"],"group":["setosa","setosa","setosa","versicolor","versicolor","versicolor","virginica","virginica","virginica"],"shape":["database","box","circle","database","box","circle","database","box","circle"],"color":["lightblue","orange","orange","lightblue","orange","orange","lightblue","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,4,5,7,8],"to":[2,3,5,6,8,9],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["setosa","versicolor","virginica"],"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<p>Note that <code>set_data_split</code> accepts any list of data
-frames, not just the output of <code>split</code>. Now let’s run this
-pipeline.</p>
+<div id="combine-pipelines" class="section level3">
+<h3>Combine pipelines</h3>
+<p>Next we combine the two pipelines. We can do this by using the
+<code>append</code> function.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> pip1<span class="sc">$</span><span class="fu">append</span>(pip2)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut       group  state</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE        data    New</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE   data_prep    New</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE standardize    New</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 4: data.modeling                   [NULL]   FALSE        data    New</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE         fit    New</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE        plot    New</span></span></code></pre></div>
+<p>First of all, note that the <code>data</code> step of the second
+pipeline has been appended with the name of the second pipeline. In
+particular, the first step of the second pipeline has been renamed from
+<code>data</code> to <code>data.modeling</code> (line 4 in the
+<code>step</code> column) and likewise the dependencies of the second
+pipeline have been updated (see lines 5-6 in the <code>depends</code>
+column).</p>
+<p>That is, when appending two pipelines, <code>pipeflow</code> ensures
+that the step names remain unique in the resulting combined pipeline and
+therefore automatically renames duplicated step names if necessary.</p>
+<p>Now, as can be also seen from the graphical representation of the
+pipeline,</p>
+<div id="htmlwidget-5e3d05746aea407b107d" style="width:288px;height:250px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-5e3d05746aea407b107d">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,4,4,5],"to":[2,3,5,6,6],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","fit","plot"],"width":null,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<p>the two pipelines are not yet connected. To make actual use of the
+combined pipeline, we therefore want to use the output of the first
+pipeline as input of the second pipeline, that is, we want to use the
+output of the <code>standardize</code> step as the data parameter input
+in the <code>data.modeling</code> step. One way to achieve this would be
+to use the <code>replace</code> function as described earlier in the
+vignette <a href="v02-modify-pipeline.html">modify the pipeline</a>, for
+example:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(<span class="st">&quot;data.modeling&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>standardize) data)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>pip</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
+<div id="htmlwidget-f0b630553e161d137f07" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f0b630553e161d137f07">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="relative-indexing" class="section level4">
+<h4>Relative indexing</h4>
+<p>Since the name of the last step might not always be known<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>, the
+<code>pipeflow</code> package also provides a relative position indexing
+mechanism, which allows to rewrite the above command as follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(<span class="st">&quot;data.modeling&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~-</span><span class="dv">1</span>) data)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>pip</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
+<p>Generally speaking, the relative indexing mechanism allows to refer
+to steps positioned above the current step. The index <code>~-1</code>
+can be interpreted as “go one step back”, <code>~-2</code> as “go two
+steps back”, and so on.</p>
+<p>Since the scenario of connecting two pipelines is so common and to
+avoid having to do the above replacement steps manually, the
+<code>append</code> function actually provides an argument
+<code>outAsIn</code> that allows for appending and “connecting” both
+pipelines in one go:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> pip1<span class="sc">$</span><span class="fu">append</span>(pip2, <span class="at">outAsIn =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>pip</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
+<div id="htmlwidget-15a1a6dd68c89324ea27" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-15a1a6dd68c89324ea27">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<p>If we inspect the <code>data.modeling</code> step, we see that “under
+the hood” the original step indeed has been replaced by the output of
+the last step of the first pipeline using the same relative indexing
+mechanism we did manually before.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_step</span>(<span class="st">&quot;data.modeling&quot;</span>)[[<span class="st">&quot;fun&quot;</span>]]</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># [[1]]</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># function (data = ~-1) </span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># data</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># &lt;bytecode: 0x000001f3bd180040&gt;</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># &lt;environment: 0x000001f3bc6bb008&gt;</span></span></code></pre></div>
+</div>
+</div>
+<div id="run-combined-pipeline" class="section level3">
+<h3>Run combined pipeline</h3>
+<p>Let’s now run the combined pipeline and inspect the plot.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.793] Start run of &#39;preprocessing.modeling&#39; pipeline:</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.794] Step 1/6 data</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.797] Step 2/6 data_prep</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.800] Step 3/6 standardize</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.802] Step 4/6 data.modeling</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.804] Step 5/6 fit</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.807] Step 6/6 plot</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.812] Finished execution of steps.</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:40.812] Done.</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;plot&quot;</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
+<p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
+<p>As we can see, the plot shows the linear model fit using the
+standardized data. We can now go ahead and for example change the
+x-variable of the model and rerun the pipeline.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>))</span></code></pre></div>
+<div id="htmlwidget-b08f5eeee0cac20e11d7" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-b08f5eeee0cac20e11d7">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightgreen","lightgreen","lightgreen","lightgreen","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.966] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.967] Step 1/9 data.setosa</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.970] Step 2/9 fit.setosa</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.973] Step 3/9 coefs.setosa</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.975] Step 4/9 data.versicolor</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.978] Step 5/9 fit.versicolor</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.981] Step 6/9 coefs.versicolor</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.984] Step 7/9 data.virginica</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.986] Step 8/9 fit.virginica</span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.990] Step 9/9 coefs.virginica</span></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.991] Finished execution of steps.</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:56.992] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># $setosa</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co">#   -0.5694327    0.7985283 </span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co"># $versicolor</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co">#    0.8721460    0.3197193 </span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co"># $virginica</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#    1.4463054    0.2318905</span></span></code></pre></div>
-<p>As we can see, the output is now the same as before but was obtained
-without the need to write additional code outside the pipeline
-framework.</p>
-<p>Finally, as a side note there is another built-in function named
-<code>split</code>, which can be used to split the pipeline into its
-independent parts. While this works for any pipeline, in our working
-example, it naturally will split the pipeline into the parts defined by
-the data split.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">split</span>()</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># [[1]]</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co">#            step     depends                   out keepOut  group  state</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co">#          &lt;char&gt;      &lt;list&gt;                &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># 1:  data.setosa                &lt;data.frame[50x5]&gt;   FALSE setosa   Done</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># 2:   fit.setosa data.setosa              &lt;lm[12]&gt;   FALSE setosa   Done</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># 3: coefs.setosa  fit.setosa -0.5694327, 0.7985283    TRUE setosa   Done</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co"># [[2]]</span></span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co">#                step         depends                 out keepOut      group  state</span></span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="co">#              &lt;char&gt;          &lt;list&gt;              &lt;list&gt;  &lt;lgcl&gt;     &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a><span class="co"># 1:  data.versicolor                  &lt;data.frame[50x5]&gt;   FALSE versicolor   Done</span></span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a><span class="co"># 2:   fit.versicolor data.versicolor            &lt;lm[12]&gt;   FALSE versicolor   Done</span></span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="co"># 3: coefs.versicolor  fit.versicolor 0.8721460,0.3197193    TRUE versicolor   Done</span></span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a><span class="co"># </span></span>
-<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a><span class="co"># [[3]]</span></span>
-<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a><span class="co">#               step        depends                 out keepOut     group  state</span></span>
-<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a><span class="co">#             &lt;char&gt;         &lt;list&gt;              &lt;list&gt;  &lt;lgcl&gt;    &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a><span class="co"># 1:  data.virginica                 &lt;data.frame[50x5]&gt;   FALSE virginica   Done</span></span>
-<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a><span class="co"># 2:   fit.virginica data.virginica            &lt;lm[12]&gt;   FALSE virginica   Done</span></span>
-<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a><span class="co"># 3: coefs.virginica  fit.virginica 1.4463054,0.2318905    TRUE virginica   Done</span></span></code></pre></div>
-<p>This function is especially useful if you want separate parts of the
-pipeline code in order to run them in parallel.</p>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.074] Start run of &#39;preprocessing.modeling&#39; pipeline:</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.075] Step 1/6 data - skip &#39;done&#39; step</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.076] Step 2/6 data_prep - skip &#39;done&#39; step</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.077] Step 3/6 standardize - skip &#39;done&#39; step</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.078] Step 4/6 data.modeling - skip &#39;done&#39; step</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.079] Step 5/6 fit</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.082] Step 6/6 plot</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.091] Finished execution of steps.</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:41.092] Done.</span></span></code></pre></div>
+<div id="htmlwidget-f0c7811d24b9dadb70d1" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f0c7811d24b9dadb70d1">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightgreen","lightgreen","lightgreen","lightgreen","lightgreen","lightgreen"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;plot&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
+<p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
+<p>When creating these pipelines, usually there will be a lot of steps
+calculating intermediate results and only a few steps contain the final
+results that we are interested in. In the above example, we were
+interested in the final plot output. In a real-world scenario, the
+pipeline would contain many more steps that are not of interest to us.
+To see how to conveniently tag, collect and possibly group the output of
+those final steps, see the next vignette <a href="v04-collect-output.html">Collecting output</a>.</p>
 </div>
-<div id="combine-output" class="section level3">
-<h3>Combine output</h3>
-<p>In some cases, we may want to (re-)combine the output of the pipeline
-parts. For example, we may want to combine the coefficients of the
-linear models into one table.</p>
-<p>Let’s for this matter extend our pipeline by one step at the end.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>        <span class="st">&quot;my-pipeline&quot;</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
-<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
-<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;x&quot;</span>,</span>
-<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;y&quot;</span></span>
-<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>        ) {</span>
-<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>        }</span>
-<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a></span>
-<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a>        <span class="st">&quot;coefs&quot;</span>,</span>
-<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a>            <span class="at">fit =</span> <span class="sc">~</span>fit</span>
-<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a>        ) {</span>
-<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a>            <span class="fu">coefficients</span>(fit)</span>
-<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a>        }</span>
-<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a>    )  <span class="sc">|&gt;</span></span>
-<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a></span>
-<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a>        <span class="st">&quot;combine_coefs&quot;</span>,</span>
-<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a>            <span class="at">coefs =</span> <span class="sc">~</span>coefs</span>
-<span id="cb16-29"><a href="#cb16-29" tabindex="-1"></a>        ) {</span>
-<span id="cb16-30"><a href="#cb16-30" tabindex="-1"></a>            coefs <span class="sc">|&gt;</span> <span class="fu">do.call</span>(rbind, <span class="at">args =</span> _) <span class="sc">|&gt;</span> <span class="fu">as.data.frame</span>()</span>
-<span id="cb16-31"><a href="#cb16-31" tabindex="-1"></a>        },</span>
-<span id="cb16-32"><a href="#cb16-32" tabindex="-1"></a>        <span class="at">keepOut =</span> <span class="cn">TRUE</span></span>
-<span id="cb16-33"><a href="#cb16-33" tabindex="-1"></a>    )</span></code></pre></div>
-<p>Here is how the pipeline looks for now.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip</span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="co">#             step depends    out keepOut         group  state</span></span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co">#           &lt;char&gt;  &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co"># 1:          data         [NULL]   FALSE          data    New</span></span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># 2:           fit    data [NULL]   FALSE           fit    New</span></span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co"># 3:         coefs     fit [NULL]   FALSE         coefs    New</span></span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co"># 4: combine_coefs   coefs [NULL]    TRUE combine_coefs    New</span></span></code></pre></div>
-<p>Next we again want to apply the <code>set_data_split</code> function,
-but we basically need to make sure that the pipeline is split up
-<em>except</em> for the last step that combines everything. We achieve
-this by using the <code>toStep</code> parameter, which basically tells
-the pipeline to split up to a certain step.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data_split</span>(<span class="fu">split</span>(iris, iris<span class="sc">$</span>Species), <span class="at">toStep =</span> <span class="st">&quot;coefs&quot;</span>)</span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>pip</span>
-<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="co">#                 step         depends    out keepOut         group    state</span></span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co">#               &lt;char&gt;          &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
-<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co">#  1:      data.setosa                 [NULL]   FALSE        setosa      New</span></span>
-<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co">#  2:       fit.setosa     data.setosa [NULL]   FALSE        setosa Outdated</span></span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co">#  3:     coefs.setosa      fit.setosa [NULL]   FALSE        setosa Outdated</span></span>
-<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co">#  4:  data.versicolor                 [NULL]   FALSE    versicolor      New</span></span>
-<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co">#  5:   fit.versicolor data.versicolor [NULL]   FALSE    versicolor Outdated</span></span>
-<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="co">#  6: coefs.versicolor  fit.versicolor [NULL]   FALSE    versicolor Outdated</span></span>
-<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co">#  7:   data.virginica                 [NULL]   FALSE     virginica      New</span></span>
-<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="co">#  8:    fit.virginica  data.virginica [NULL]   FALSE     virginica Outdated</span></span>
-<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a><span class="co">#  9:  coefs.virginica   fit.virginica [NULL]   FALSE     virginica Outdated</span></span>
-<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="co"># 10:    combine_coefs       &lt;list[1]&gt; [NULL]    TRUE combine_coefs      New</span></span></code></pre></div>
-<p>We see that the last step is not replicated for each data subset and
-it now contains a list of dependencies, namely:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_depends</span>()[[<span class="st">&quot;combine_coefs&quot;</span>]]</span>
-<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a><span class="co"># $coefs</span></span>
-<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a><span class="co"># [1] &quot;coefs.setosa&quot;     &quot;coefs.versicolor&quot; &quot;coefs.virginica&quot;</span></span></code></pre></div>
-<p>Graphically it becomes even more clear:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> pip<span class="sc">$</span><span class="fu">get_graph</span>()) <span class="sc">|&gt;</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>, <span class="at">sortMethod =</span> <span class="st">&quot;directed&quot;</span>)</span></code></pre></div>
-<div class="visNetwork html-widget html-fill-item" id="htmlwidget-26f424b4946b6a57aa22" style="width:288px;height:288px;"></div>
-<script type="application/json" data-for="htmlwidget-26f424b4946b6a57aa22">{"x":{"nodes":{"id":[1,2,3,4,5,6,7,8,9,10],"label":["data.setosa","fit.setosa","coefs.setosa","data.versicolor","fit.versicolor","coefs.versicolor","data.virginica","fit.virginica","coefs.virginica","combine_coefs"],"group":["setosa","setosa","setosa","versicolor","versicolor","versicolor","virginica","virginica","virginica","combine_coefs"],"shape":["database","box","box","database","box","box","database","box","box","circle"],"color":["lightblue","orange","orange","lightblue","orange","orange","lightblue","orange","orange","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,5,6,7,8,9],"to":[2,3,10,5,6,10,8,9,10],"arrows":["to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["setosa","versicolor","virginica","combine_coefs"],"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<p>Finally, let’s see how this plays out when we run the pipeline.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Sepal.Length&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Sepal.Width&quot;</span>))</span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.397] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.398] Step 1/10 data.setosa</span></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.401] Step 2/10 fit.setosa</span></span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.406] Step 3/10 coefs.setosa</span></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.410] Step 4/10 data.versicolor</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.414] Step 5/10 fit.versicolor</span></span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.417] Step 6/10 coefs.versicolor</span></span>
-<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.420] Step 7/10 data.virginica</span></span>
-<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.423] Step 8/10 fit.virginica</span></span>
-<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.427] Step 9/10 coefs.virginica</span></span>
-<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.429] Step 10/10 combine_coefs</span></span>
-<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.431] Finished execution of steps.</span></span>
-<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a><span class="co"># INFO  [2024-12-01 13:40:57.432] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="co"># $combine_coefs</span></span>
-<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="co">#                  (Intercept) Sepal.Length</span></span>
-<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="co"># coefs.setosa      -0.5694327    0.7985283</span></span>
-<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a><span class="co"># coefs.versicolor   0.8721460    0.3197193</span></span>
-<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a><span class="co"># coefs.virginica    1.4463054    0.2318905</span></span></code></pre></div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>A typical example would be appending several pipelines
+in a programmatic context.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

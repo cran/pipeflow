@@ -75,6 +75,19 @@ library(visNetwork)
 do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
     visHierarchicalLayout(direction = "LR")
 
+## ----try-add-bad-step, error = TRUE---------------------------------------------------------------
+try({
+pip$add(
+    "another_step",
+    function(data = ~foo) {
+        data
+    }
+)
+})
+
+## -------------------------------------------------------------------------------------------------
+pip
+
 ## ----run-pipeline---------------------------------------------------------------------------------
 pip$run()
 
@@ -89,7 +102,7 @@ do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
 ## ----inspect-lm, message = FALSE------------------------------------------------------------------
 pip$get_out("model_fit")
 
-## ----inspect-plot, message = FALSE, warning = FALSE-----------------------------------------------
+## ----inspect-plot, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----------------------
 pip$get_out("model_plot")
 
 ## ----inspect-params-------------------------------------------------------------------------------
@@ -110,22 +123,25 @@ do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
 ## ----run-pipeline-again---------------------------------------------------------------------------
 pip$run()
 
-## ----inspect-plot-again, message = FALSE, warning = FALSE-----------------------------------------
+## ----inspect-plot-again, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----------------
 pip$get_out("model_plot")
 
 ## ----set-title------------------------------------------------------------------------------------
 pip$set_params(list(title = "Some new title"))
 pip
 
-## ----inspect-plot-after-title-change, message = FALSE, warning = FALSE----------------------------
+## ----inspect-plot-after-title-change, message = FALSE, warning = FALSE, fig.alt = "model-plot"----
 pip$run()$get_out("model_plot")
 
 ## -------------------------------------------------------------------------------------------------
 pip$set_data(airquality[1:10, ])
 pip
 
-## ----inspect-plot-after-data-change, message = FALSE, warning = FALSE-----------------------------
+## ----inspect-plot-after-data-change, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----
 pip$run()$get_out("model_plot")
+
+## ----set-unknown-parameters, warning = TRUE-------------------------------------------------------
+pip$set_params(list(titel = "misspelled variable name", foo = "my foo"))
 
 ## ----include = FALSE----------------------------------------------------------
 options(old)
