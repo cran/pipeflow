@@ -416,13 +416,13 @@ residuals.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(airquality)</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Ozone&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Temp&quot;</span>))</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.851] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.852] Step 1/4 data</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.854] Step 2/4 fit</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.857] Step 3/4 residual_shapiro_p_value</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.859] Step 4/4 plot</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.866] Finished execution of steps.</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.867] Done.</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.183] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.184] Step 1/4 data</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.186] Step 2/4 fit</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.189] Step 3/4 residual_shapiro_p_value</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.190] Step 4/4 plot</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.198] Finished execution of steps.</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.199] Done.</span></span>
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># $residual_shapiro_p_value</span></span>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># [1] 0.00022598</span></span>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># </span></span>
@@ -440,13 +440,13 @@ pipeline a second time as follows:</p>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>    pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">pointColor =</span> <span class="st">&quot;red&quot;</span>))</span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    pip<span class="sc">$</span><span class="fu">run</span>()<span class="sc">$</span><span class="fu">collect_out</span>()</span>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>}</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:44.999] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.000] Step 1/4 data - skip &#39;done&#39; step</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.001] Step 2/4 fit - skip &#39;done&#39; step</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.002] Step 3/4 residual_shapiro_p_value - skip &#39;done&#39; step</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.003] Step 4/4 plot</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.013] Finished execution of steps.</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.014] Done.</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.375] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.378] Step 1/4 data - skip &#39;done&#39; step</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.382] Step 2/4 fit - skip &#39;done&#39; step</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.384] Step 3/4 residual_shapiro_p_value - skip &#39;done&#39; step</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.385] Step 4/4 plot</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.399] Finished execution of steps.</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.400] Done.</span></span>
 <span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co"># $residual_shapiro_p_value</span></span>
 <span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># [1] 0.00022598</span></span>
 <span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co"># </span></span>
@@ -482,13 +482,13 @@ parameter.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(airquality)</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Ozone&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Temp&quot;</span>, <span class="at">.self =</span> pip))</span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()<span class="sc">$</span><span class="fu">collect_out</span>()</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.183] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.184] Step 1/4 data</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.186] Step 2/4 fit</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.189] Step 3/4 residual_shapiro_p_value</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.193] Step 4/4 plot</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.199] Finished execution of steps.</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.200] Done.</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.592] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.593] Step 1/4 data</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.595] Step 2/4 fit</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.600] Step 3/4 residual_shapiro_p_value</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.604] Step 4/4 plot</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.610] Finished execution of steps.</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.611] Done.</span></span>
 <span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># $residual_shapiro_p_value</span></span>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># [1] 0.00022598</span></span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co"># </span></span>
@@ -529,13 +529,13 @@ pipeline structure and how it can be modified at runtime.</p>
 <p>This pipeline just adds 1, 2, and 3 to the input data,
 respectively.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(<span class="dv">1</span>)<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.365] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.366] Step 1/4 data</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.368] Step 2/4 f1</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.370] Step 3/4 f2</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.372] Step 4/4 f3</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.373] Finished execution of steps.</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.373] Done.</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.795] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.796] Step 1/4 data</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.800] Step 2/4 f1</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.802] Step 3/4 f2</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.804] Step 4/4 f3</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.805] Finished execution of steps.</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.806] Done.</span></span>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>pip</span>
 <span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#      step depends    out keepOut  group  state</span></span>
 <span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
@@ -585,13 +585,13 @@ and subtracts 3 from the input.</p>
 <p>If we run the pipeline as before, nothing will change.</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">.self =</span> pip))</span>
 <span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(<span class="dv">1</span>)<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.449] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.450] Step 1/4 data</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.453] Step 2/4 f1</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.455] Step 3/4 f2</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.457] Step 4/4 f3</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.458] Finished execution of steps.</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.458] Done.</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.889] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.890] Step 1/4 data</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.892] Step 2/4 f1</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.894] Step 3/4 f2</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.897] Step 4/4 f3</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.899] Finished execution of steps.</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.899] Done.</span></span>
 <span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>pip</span>
 <span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co">#      step depends    out keepOut  group  state</span></span>
 <span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
@@ -601,13 +601,13 @@ and subtracts 3 from the input.</p>
 <span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="co"># 4:     f3      f2      7   FALSE     f3   Done</span></span></code></pre></div>
 <p>Now let’s try it with an input of 10.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(<span class="dv">10</span>)<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.497] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.498] Step 1/4 data</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.500] Step 2/4 f1</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.503] Step 3/4 f2</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.508] Step 4/4 f3</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.510] Finished execution of steps.</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.510] Done.</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.941] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.942] Step 1/4 data</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.945] Step 2/4 f1</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.949] Step 3/4 f2</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.955] Step 4/4 f3</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.956] Finished execution of steps.</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:30.957] Done.</span></span>
 <span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>pip</span>
 <span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#      step depends    out keepOut  group  state</span></span>
 <span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
@@ -692,19 +692,19 @@ re-run.</p>
 <p>And now let’s run it with an input of 10.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">.self =</span> pip))</span>
 <span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_data</span>(<span class="dv">10</span>)<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.624] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.625] Step 1/4 data</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.628] Step 2/4 f1</span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.630] Step 3/4 f2</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.643] Abort pipeline execution and restart on new.</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.643] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.644] Step 1/5 data - skip &#39;done&#39; step</span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.645] Step 2/5 f1 - skip &#39;done&#39; step</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.646] Step 3/5 f2a</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.648] Step 4/5 f2b</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.650] Step 5/5 f3</span></span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.651] Finished execution of steps.</span></span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:45.652] Done.</span></span></code></pre></div>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.080] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.082] Step 1/4 data</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.085] Step 2/4 f1</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.087] Step 3/4 f2</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.101] Abort pipeline execution and restart on new.</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.101] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.102] Step 1/5 data - skip &#39;done&#39; step</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.103] Step 2/5 f1 - skip &#39;done&#39; step</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.104] Step 3/5 f2a</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.106] Step 4/5 f2b</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.108] Step 5/5 f3</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.110] Finished execution of steps.</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:31.110] Done.</span></span></code></pre></div>
 <p>The log output shows the abort and re-run of the pipeline. Let’s see
 the final structure and step outputs.</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip</span>

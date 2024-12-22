@@ -445,15 +445,15 @@ rectangle boxes.</p>
 <code>collect_out</code> method, which returns a list with the output of
 the flagged steps.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.274] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.275] Step 1/6 data</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.278] Step 2/6 data_prep</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.281] Step 3/6 data_summary</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.282] Step 4/6 model_fit</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.285] Step 5/6 model_summary</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.288] Step 6/6 model_plot</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.293] Finished execution of steps.</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.293] Done.</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.493] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.495] Step 1/6 data</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.499] Step 2/6 data_prep</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.502] Step 3/6 data_summary</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.504] Step 4/6 model_fit</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.507] Step 5/6 model_summary</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.509] Step 6/6 model_plot</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.515] Finished execution of steps.</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.515] Done.</span></span>
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a></span>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>out <span class="ot">&lt;-</span> pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a></span>
@@ -552,15 +552,15 @@ illustrate this by slightly modifying the previous example.</p>
 is, each step represents the trivial case of a one-sized group. Again,
 we run the pipeline and collect the output.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.435] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.436] Step 1/6 data</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.439] Step 2/6 data_prep</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.442] Step 3/6 used_data</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.443] Step 4/6 model_fit</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.446] Step 5/6 model_summary</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.448] Step 6/6 model_plot</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.453] Finished execution of steps.</span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:42.454] Done.</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.663] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.664] Step 1/6 data</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.667] Step 2/6 data_prep</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.670] Step 3/6 used_data</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.672] Step 4/6 model_fit</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.675] Step 5/6 model_summary</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.676] Step 6/6 model_plot</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.685] Finished execution of steps.</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:27.685] Done.</span></span>
 <span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a></span>
 <span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>out <span class="ot">&lt;-</span> pip<span class="sc">$</span><span class="fu">collect_out</span>()</span>
 <span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a></span>

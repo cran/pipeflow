@@ -454,14 +454,14 @@ steps now use the standardized data. Let’s re-run the pipeline and
 inspect the output.</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Solar.R&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Wind&quot;</span>))</span>
 <span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.251] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.252] Step 1/5 data - skip &#39;done&#39; step</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.253] Step 2/5 data_prep - skip &#39;done&#39; step</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.253] Step 3/5 standardize</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.256] Step 4/5 model_fit</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.259] Step 5/5 model_plot</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.264] Finished execution of steps.</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-04 18:01:39.264] Done.</span></span></code></pre></div>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.329] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.330] Step 1/5 data - skip &#39;done&#39; step</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.331] Step 2/5 data_prep - skip &#39;done&#39; step</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.332] Step 3/5 standardize</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.334] Step 4/5 model_fit</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.337] Step 5/5 model_plot</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.342] Finished execution of steps.</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.343] Done.</span></span></code></pre></div>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;model_fit&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">coefficients</span>()</span>
 <span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#  (Intercept)      Solar.R </span></span>
 <span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#  0.979672739 -0.006625601</span></span></code></pre></div>
@@ -486,8 +486,7 @@ default checks if the step is used by any other step, and raises an
 error if removing the step would violate the integrity of the
 pipeline.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">try</span>(pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>))</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Error in pip$remove_step(&quot;standardize&quot;) : </span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co">#   cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Error : cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
 <p>To enforce removing a step together with all its downstream
 dependencies, you can use the <code>recursive</code> argument.</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
