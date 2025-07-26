@@ -48,8 +48,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -60,7 +61,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -377,7 +378,7 @@ is, we have the following pipeline</p>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>    <span class="at">afterStep =</span> <span class="st">&quot;data_prep&quot;</span>,</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="at">step =</span> <span class="st">&quot;standardize&quot;</span>,</span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span><span class="st">`</span><span class="at">data_prep</span><span class="st">`</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
 <span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    ) {</span>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
@@ -392,119 +393,116 @@ is, we have the following pipeline</p>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 3: standardize           data_prep             [NULL]   FALSE standardize    New</span></span>
 <span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 4:   model_fit           data_prep           &lt;lm[13]&gt;   FALSE   model_fit   Done</span></span>
 <span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,data_prep           &lt;gg[11]&gt;   FALSE  model_plot   Done</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> pip<span class="sc">$</span><span class="fu">get_graph</span>()) <span class="sc">|&gt;</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>, <span class="at">sortMethod =</span> <span class="st">&quot;directed&quot;</span>)</span></code></pre></div>
-<p>As we can see, the <code>standardize</code> step is now part of the
-pipeline, but so far it is not used by any other step.</p>
+<p>The <code>standardize</code> step is now part of the pipeline, but so
+far it is not used by any other step.</p>
 </div>
 <div id="replace-existing-steps" class="section level3">
 <h3>Replace existing steps</h3>
 <p>Let’s revisit the function definition of the <code>model_fit</code>
 step</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_step</span>(<span class="st">&quot;model_fit&quot;</span>)[[<span class="st">&quot;fun&quot;</span>]]</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co"># [[1]]</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># function (data = ~data_prep, xVar = &quot;Temp.Celsius&quot;) </span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># {</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#     lm(paste(&quot;Ozone ~&quot;, xVar), data = data)</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># }</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_step</span>(<span class="st">&quot;model_fit&quot;</span>)[[<span class="st">&quot;fun&quot;</span>]]</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># [[1]]</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># function (data = ~data_prep, xVar = &quot;Temp.Celsius&quot;) </span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># {</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#     lm(paste(&quot;Ozone ~&quot;, xVar), data = data)</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># }</span></span></code></pre></div>
 <p>To use the standardized data, we need to change the data dependency
 such that it refers to the <code>standardize</code> step. Also instead
 of a fixed y-variable in the model, we want to pass it as a
-paramter.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;model_fit&quot;</span>,</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize,        <span class="co"># &lt;- changed data reference</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>              <span class="co"># &lt;- new y-variable</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    ) {</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    }</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>)</span></code></pre></div>
+parameter.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="st">&quot;model_fit&quot;</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize,        <span class="co"># &lt;- changed data reference</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>              <span class="co"># &lt;- new y-variable</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    ) {</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    }</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>)</span></code></pre></div>
 <p>The <code>model_plot</code> step needs to be updated in a similar
 way.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="st">&quot;model_plot&quot;</span>,</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>        <span class="at">model =</span> <span class="sc">~</span>model_fit,</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize,         <span class="co"># &lt;- changed data reference</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>,              <span class="co"># &lt;- new y-variable</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>    ) {</span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>        coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>        <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>            <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>            <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>            <span class="fu">labs</span>(<span class="at">title =</span> title)</span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>    }</span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;model_plot&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        <span class="at">model =</span> <span class="sc">~</span>model_fit,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize,         <span class="co"># &lt;- changed data reference</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>,              <span class="co"># &lt;- new y-variable</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    ) {</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>        coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>        <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>            <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>            <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>            <span class="fu">labs</span>(<span class="at">title =</span> title)</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>    }</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>)</span></code></pre></div>
 <p>The updated pipeline now looks as follows.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#           step               depends                out keepOut       group  state</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;                &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;   FALSE        data   Done</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;   FALSE   data_prep   Done</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># 3: standardize             data_prep             [NULL]   FALSE standardize    New</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize             [NULL]   FALSE   model_fit    New</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize             [NULL]   FALSE  model_plot    New</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co">#           step               depends                out keepOut       group  state</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;                &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;   FALSE        data   Done</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;   FALSE   data_prep   Done</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 3: standardize             data_prep             [NULL]   FALSE standardize    New</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize             [NULL]   FALSE   model_fit    New</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize             [NULL]   FALSE  model_plot    New</span></span></code></pre></div>
 <p>We see that the <code>model_fit</code> and <code>model_plot</code>
-steps now use the standardized data. Let’s re-run the pipeline and
-inspect the output.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Solar.R&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Wind&quot;</span>))</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.329] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.330] Step 1/5 data - skip &#39;done&#39; step</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.331] Step 2/5 data_prep - skip &#39;done&#39; step</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.332] Step 3/5 standardize</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.334] Step 4/5 model_fit</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.337] Step 5/5 model_plot</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.342] Finished execution of steps.</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># INFO  [2024-12-22 21:50:24.343] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;model_fit&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">coefficients</span>()</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#  (Intercept)      Solar.R </span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#  0.979672739 -0.006625601</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;model_plot&quot;</span>)</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># Warning: Removed 2 rows containing missing values or values outside the scale range</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
+steps now use (i.e., depend on) the standardized data. Let’s re-run the
+pipeline and inspect the output.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Solar.R&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Wind&quot;</span>))</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.487] Start run of &#39;my-pipeline&#39; pipeline:</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.488] Step 1/5 data - skip &#39;done&#39; step</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.489] Step 2/5 data_prep - skip &#39;done&#39; step</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.490] Step 3/5 standardize</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.493] Step 4/5 model_fit</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.495] Step 5/5 model_plot</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.500] Finished execution of steps.</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:23.501] Done.</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;model_fit&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">coefficients</span>()</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co">#  (Intercept)      Solar.R </span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co">#  0.979672739 -0.006625601</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;model_plot&quot;</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># Warning: Removed 2 rows containing missing values or values outside the scale range</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
 <p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
 </div>
 <div id="removing-steps" class="section level3">
 <h3>Removing steps</h3>
 <p>Let’s see the pipeline again.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>pip</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co">#           step               depends                out keepOut       group  state</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;                &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;   FALSE        data   Done</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;   FALSE   data_prep   Done</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># 3: standardize             data_prep &lt;data.frame[10x7]&gt;   FALSE standardize   Done</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize           &lt;lm[13]&gt;   FALSE   model_fit   Done</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize           &lt;gg[11]&gt;   FALSE  model_plot   Done</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co">#           step               depends                out keepOut       group  state</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;                &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;   FALSE        data   Done</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;   FALSE   data_prep   Done</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># 3: standardize             data_prep &lt;data.frame[10x7]&gt;   FALSE standardize   Done</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize           &lt;lm[13]&gt;   FALSE   model_fit   Done</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize           &lt;gg[11]&gt;   FALSE  model_plot   Done</span></span></code></pre></div>
 <p>When you are trying to remove a step, <code>pipeflow</code> by
 default checks if the step is used by any other step, and raises an
 error if removing the step would violate the integrity of the
 pipeline.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">try</span>(pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>))</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Error : cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">try</span>(pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>))</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># Error : cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
 <p>To enforce removing a step together with all its downstream
 dependencies, you can use the <code>recursive</code> argument.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># Removing step &#39;standardize&#39; and its downstream dependencies: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>pip</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="co">#         step depends                out keepOut     group  state</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="co">#       &lt;char&gt;  &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;    &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="co"># 1:      data         &lt;data.frame[10x6]&gt;   FALSE      data   Done</span></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co"># 2: data_prep    data &lt;data.frame[10x7]&gt;   FALSE data_prep   Done</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">remove_step</span>(<span class="st">&quot;standardize&quot;</span>, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Removing step &#39;standardize&#39; and its downstream dependencies: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co">#         step depends                out keepOut     group  state</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co">#       &lt;char&gt;  &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt;    &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co"># 1:      data         &lt;data.frame[10x6]&gt;   FALSE      data   Done</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># 2: data_prep    data &lt;data.frame[10x7]&gt;   FALSE data_prep   Done</span></span></code></pre></div>
 <p>Naturally, the last step never has any downstream dependencies, so it
 can be removed without any issues. There is another way to just remove
 the last step.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">pop_step</span>()</span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="co"># [1] &quot;data_prep&quot;</span></span></code></pre></div>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>pip</span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="co">#      step depends                out keepOut  group  state</span></span>
-<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co"># 1:   data         &lt;data.frame[10x6]&gt;   FALSE   data   Done</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">pop_step</span>()</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="co"># [1] &quot;data_prep&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="co">#      step depends                out keepOut  group  state</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;  &lt;list&gt;             &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co"># 1:   data         &lt;data.frame[10x6]&gt;   FALSE   data   Done</span></span></code></pre></div>
 <p>Replacing steps in a pipeline as shown in this vignette will allow to
 re-use existing pipelines and adapt them programmatically to new
 requirements. Another way of re-using pipelines is to combine them,

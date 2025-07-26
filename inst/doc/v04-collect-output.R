@@ -82,7 +82,13 @@ pip <- pipe_new(
 ## -------------------------------------------------------------------------------------------------
 pip
 
-## ----echo = FALSE, eval = getOption("pipeflow.visNetwork", default = FALSE)-----------------------
+## ----include = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE")), results = "asis", echo = FALSE----
+cat(
+    "Graphically, steps flagged with `keepOut = TRUE` are displayed",
+    "with a circle shape while \"normal\" steps are shown as rectangle boxes."
+)
+
+## ----echo = FALSE, eval = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
 # library(visNetwork)
 # do.call(visNetwork, args = c(pip$get_graph(), list(height = 300))) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")

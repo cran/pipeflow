@@ -23,7 +23,7 @@ pip$add(
 pip$add(
     "model_fit",
     function(
-        data = ~`data_prep`,
+        data = ~data_prep,
         xVar = "Temp.Celsius"
     ) {
         lm(paste("Ozone ~", xVar), data = data)
@@ -32,8 +32,8 @@ pip$add(
 pip$add(
     "model_plot",
     function(
-        model = ~`model_fit`,
-        data = ~`data_prep`,
+        model = ~model_fit,
+        data = ~data_prep,
         xVar = "Temp.Celsius",
         title = "Linear model fit"
     ) {
@@ -60,7 +60,7 @@ pip$insert_after(
     afterStep = "data_prep",
     step = "standardize",
     function(
-        data = ~`data_prep`,
+        data = ~data_prep,
         yVar = "Ozone"
     ) {
         data[, yVar] <- scale(data[, yVar])
@@ -71,12 +71,12 @@ pip$insert_after(
 ## -------------------------------------------------------------------------------------------------
 pip
 
-## ----eval = getOption("pipeflow.visNetwork", default = FALSE)-------------------------------------
+## ----eval = FALSE, echo = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
 # library(visNetwork)
 # do.call(visNetwork, args = pip$get_graph()) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
-## ----echo = FALSE, eval = getOption("pipeflow.visNetwork", default = FALSE)-----------------------
+## ----echo = FALSE, eval = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
 # library(visNetwork)
 # do.call(visNetwork, args = c(pip$get_graph(), list(height = 300))) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
