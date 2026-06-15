@@ -16,6 +16,11 @@ list of \code{Pipeline} objects
 Splits pipeline into its independent parts. This can be useful,
 for example, to split-up the pipeline in order to run each part in parallel.
 }
+\section{Lifecycle}{
+ Deprecated. Legacy API. Use \code{\link[=pip_new]{pip_new()}} and
+related pip_* functions.
+}
+
 \examples{
 # Example for two independent calculation paths
 p <- pipe_new("pipe", data = 1)
@@ -33,3 +38,4 @@ pipe_add(p, "mult", \(x = ~data, y = ~add1) x * y, keepOut = TRUE)
 pipes <- pipe_set_data_split(p, dataList) |> pipe_split()
 pipes
 }
+\keyword{internal}

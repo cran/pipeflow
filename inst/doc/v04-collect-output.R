@@ -1,46 +1,55 @@
 ## ----knitr-setup, include = FALSE-----------------------------------------------------------------
-require(pipeflow)
-
 knitr::opts_chunk$set(
-  comment = "#",
-  prompt = FALSE,
-  tidy = FALSE,
-  cache = FALSE,
-  collapse = TRUE
+    comment = "#",
+    prompt = FALSE,
+    tidy = FALSE,
+    cache = FALSE,
+    collapse = TRUE
 )
 
 old <- options(width = 100L)
-library(ggplot2)
 
 ## ----pipeline-with-output-------------------------------------------------------------------------
 library(pipeflow)
-library(ggplot2)
 
-pip <- pipe_new(
-        "my-pipeline",
-        data = airquality
+pip <- pip_new("my-pip") |>
+    pip_add(
+        "data",
+        function(data = airquality) data
     ) |>
-
-    pipe_add(
-        "data_prep",
+    pip_add("data_prep",
         function(data = ~data) {
-            replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5/9)
-        }
+            replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5 / 9)
+        },
+        tags = "data"                   # <-- set 'data' tag
     ) |>
-
-    pipe_add(
+    pip_add(
         "data_summary",
         function(
             data = ~data_prep,
             xVar = "Temp.Celsius",
             yVar = "Ozone"
         ) {
-            data[, c(xVar, yVar)]
+            format(summary(data[, c(xVar, yVar)])) |>
+                as.data.frame(row.names = NA)
         },
-        keepOut = TRUE              # <- keep this
+        tags = c("data", "summary")     # <-- set 'data' and 'summary' tags
     ) |>
-
-    pipe_add(
+    pip_add(
+        "data_plot",
+        function(
+            data = ~data_prep,
+            xVar = "Temp.Celsius",
+            yVar = "Ozone"
+        ) {
+            require(ggplot2, quietly = TRUE)
+            ggplot(data) +
+                geom_point(aes(.data[[xVar]], .data[[yVar]])) +
+                labs(title = "Data")
+        },
+        tags = c("data", "plot")        # <-- set 'data' and 'plot' tags
+    ) |>
+    pip_add(
         "model_fit",
         function(
             data = ~data_prep,
@@ -48,137 +57,95 @@ pip <- pipe_new(
             yVar = "Ozone"
         ) {
             lm(paste(yVar, "~", xVar), data = data)
-        }
-    ) |>
-
-    pipe_add(
-        "model_summary",
-        function(
-            fit = ~model_fit
-        ) {
-            summary(fit)
         },
-        keepOut = TRUE              # <- keep this
+        tags = c("model", "fit")        # <-- set 'model' and 'fit' tags
     ) |>
-
-    pipe_add(
+    pip_add(
+        "model_summary",
+        function(fit = ~model_fit) {
+            summary(fit) |>
+                coefficients() |>
+                as.data.frame()
+        },
+        tags = c("model", "summary")    # <-- set 'model' and 'summary' tags
+    ) |>
+    pip_add(
         "model_plot",
         function(
             model = ~model_fit,
-            data = ~data_prep,
+            data_plot = ~data_plot,
             xVar = "Temp.Celsius",
-            yVar = "Ozone",
-            title = "Linear model fit"
+            yVar = "Ozone"
         ) {
             coeffs <- coefficients(model)
-            ggplot(data) +
-                geom_point(aes(.data[[xVar]], .data[["Ozone"]])) +
+            data_plot +
                 geom_abline(intercept = coeffs[1], slope = coeffs[2]) +
-                labs(title = title)
+                labs(title = "Linear model fit")
         },
-        keepOut = TRUE              # <- keep this
+        tags = c("model", "plot")       # <-- set 'model' and 'plot' tags
     )
 
 ## -------------------------------------------------------------------------------------------------
 pip
 
-## ----include = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE")), results = "asis", echo = FALSE----
-cat(
-    "Graphically, steps flagged with `keepOut = TRUE` are displayed",
-    "with a circle shape while \"normal\" steps are shown as rectangle boxes."
+## -------------------------------------------------------------------------------------------------
+pip_run(pip)
+
+pip
+
+## ----message = FALSE, warning = FALSE-------------------------------------------------------------
+pip[["data_plot", "out"]]
+
+## ----message = FALSE, warning = FALSE-------------------------------------------------------------
+pip[["model_plot", "out"]]
+
+## -------------------------------------------------------------------------------------------------
+out <- pip_collect_out(pip)
+
+names(out)
+
+## -------------------------------------------------------------------------------------------------
+pip_view(pip, tags = "plot")
+
+## ----grouped-plots, message = FALSE, warning = FALSE----------------------------------------------
+pip |>
+    pip_view(tags = "plot") |>
+    pip_collect_out() |>
+    gridExtra::grid.arrange(grobs = _, nrow = 2)
+
+## -------------------------------------------------------------------------------------------------
+grouped <- list(
+    data  = pip_view(pip, tags = "data")  |> pip_collect_out(),
+    model = pip_view(pip, tags = "model") |> pip_collect_out()
 )
 
-## ----echo = FALSE, eval = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
-# library(visNetwork)
-# do.call(visNetwork, args = c(pip$get_graph(), list(height = 300))) |>
-#     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
+names(grouped[["data"]])
+names(grouped[["model"]])
 
 ## -------------------------------------------------------------------------------------------------
-pip$run()
+pip_set_params(pip, params = list(xVar = "Solar.R", yVar = "Wind"))
 
-out <- pip$collect_out()
-
-names(out)
-
-## -------------------------------------------------------------------------------------------------
-str(out, max.level = 1)
-
-## ----pipeline-with-grouped-output-----------------------------------------------------------------
-pip <- Pipeline$new("my-pipeline", data = airquality) |>
-
-    pipe_add(
-        "data_prep",
-        function(data = ~data) {
-            replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5/9)
-        }
-    ) |>
-
-    pipe_add(
-        "used_data",
-        function(
-            data = ~data_prep,
-            xVar = "Temp.Celsius",
-            yVar = "Ozone"
-        ) {
-            data[, c(xVar, yVar)]
-        },
-        keepOut = TRUE,
-        group = "Data"                 # <- define 'Data' group here
-    ) |>
-
-    pipe_add(
-        "model_fit",
-        function(
-            data = ~data_prep,
-            xVar = "Temp.Celsius",
-            yVar = "Ozone"
-        ) {
-            lm(paste(yVar, "~", xVar), data = data)
-        }
-    ) |>
-
-    pipe_add(
-        "model_summary",
-        function(
-            fit = ~model_fit
-        ) {
-            summary(fit)
-        },
-        keepOut = TRUE,
-        group = "Model"                # <- define 'Model' group here
-    ) |>
-
-    pipe_add(
-        "model_plot",
-        function(
-            model = ~model_fit,
-            data = ~data_prep,
-            xVar = "Temp.Celsius",
-            yVar = "Ozone",
-            title = "Linear model fit"
-        ) {
-            coeffs <- coefficients(model)
-            ggplot(data) +
-                geom_point(aes(.data[[xVar]], .data[["Ozone"]])) +
-                geom_abline(intercept = coeffs[1], slope = coeffs[2]) +
-                labs(title = title)
-        },
-        keepOut = TRUE,
-        group = "Model"                # <- define 'Model' group here
-    )
-
-## -------------------------------------------------------------------------------------------------
 pip
 
 ## -------------------------------------------------------------------------------------------------
-pip$run()
-
-out <- pip$collect_out()
-
-names(out)
+pip |> pip_view(filter = list(depends = "model_fit", state = "outdated"))
 
 ## -------------------------------------------------------------------------------------------------
-str(out, max.level = 2)
+pip |>
+    pip_view(filter = list(step = "^data", state = "outdated"), fixed = FALSE)
+
+## -------------------------------------------------------------------------------------------------
+v <- pip |> pip_view(filter = list(state = "outdated"))
+v
+
+v2 <- v |> pip_view(tags = "plot")
+v2
+
+## -------------------------------------------------------------------------------------------------
+v2 |> pip_run()
+
+## -------------------------------------------------------------------------------------------------
+pip
 
 ## ----include = FALSE----------------------------------------------------------
 options(old)

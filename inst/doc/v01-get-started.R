@@ -1,12 +1,10 @@
 ## ----knitr-setup, include = FALSE-----------------------------------------------------------------
-require(pipeflow)
-
 knitr::opts_chunk$set(
-  comment = "#",
-  prompt = FALSE,
-  tidy = FALSE,
-  cache = FALSE,
-  collapse = TRUE
+    comment = "#",
+    prompt = FALSE,
+    tidy = FALSE,
+    cache = FALSE,
+    collapse = TRUE
 )
 
 old <- options(width = 100L)
@@ -16,26 +14,27 @@ head(airquality)
 
 ## ----define-pipeline------------------------------------------------------------------------------
 library(pipeflow)
-library(ggplot2)
 
-pip <- Pipeline$new("my-pipeline", data = airquality)
+pip <- pip_new("my-pip")
+
+pip <- pip_add(pip,
+    step = "data",
+    fun = function(data = airquality) data
+)
 
 ## ----show-initial-pipeline------------------------------------------------------------------------
 pip
 
 ## ----define-data-prep-step------------------------------------------------------------------------
-pip$add(
+pip |> pip_add(
     "data_prep",
-    function(data = ~data) {
-        replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5/9)
+    function(x = ~data) {
+        replace(x, "Temp.Celsius", (x[, "Temp"] - 32) * 5 / 9)
     }
 )
 
-## ----show-pipeline-after-data-prep-was-added------------------------------------------------------
-pip
-
 ## -------------------------------------------------------------------------------------------------
-pip$add(
+pip |> pip_add(
     "model_fit",
     function(
         data = ~data_prep,
@@ -44,40 +43,44 @@ pip$add(
         lm(paste("Ozone ~", xVar), data = data)
     }
 )
+pip
 
 ## -------------------------------------------------------------------------------------------------
-pip$add(
+pip |> pip_add(
     "model_plot",
     function(
         model = ~model_fit,
         data = ~data_prep,
         xVar = "Temp.Celsius",
+        xLab = "Temperature in degrees Celsius",
         title = "Linear model fit"
     ) {
+        require(ggplot2, quietly = TRUE)
         coeffs <- coefficients(model)
         ggplot(data) +
             geom_point(aes(.data[[xVar]], .data[["Ozone"]])) +
             geom_abline(intercept = coeffs[1], slope = coeffs[2]) +
-            labs(title = title)
+            labs(title = title, x = xLab)
     }
 )
-
-## ----show-completed-pipeline----------------------------------------------------------------------
 pip
 
 ## ----eval = FALSE---------------------------------------------------------------------------------
 # library(visNetwork)
-# do.call(visNetwork, args = pip$get_graph()) |>
+# do.call(visNetwork, args = pip_get_graph(pip)) |>
 #     visHierarchicalLayout(direction = "LR")
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
 library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 100, width = 600))
+) |>
     visHierarchicalLayout(direction = "LR")
 
 ## ----try-add-bad-step, error = TRUE---------------------------------------------------------------
 try({
-pip$add(
+pip |> pip_add(
     "another_step",
     function(data = ~foo) {
         data
@@ -89,59 +92,69 @@ pip$add(
 pip
 
 ## ----run-pipeline---------------------------------------------------------------------------------
-pip$run()
+pip_run(pip)
 
 ## ----pipeline-after-run---------------------------------------------------------------------------
 pip
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 100, width = 600))
+) |>
     visHierarchicalLayout(direction = "LR")
 
 ## ----inspect-lm, message = FALSE------------------------------------------------------------------
-pip$get_out("model_fit")
+pip[["model_fit", "out"]]
 
 ## ----inspect-plot, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----------------------
-pip$get_out("model_plot")
+pip[["model_plot", "out"]]
 
 ## ----inspect-params-------------------------------------------------------------------------------
-pip$get_params()
+pip_get_params(pip) |> str()
 
 ## ----set-xVar-------------------------------------------------------------------------------------
-pip$set_params(list(xVar = "Solar.R"))
-pip$get_params()
+pip |>
+    pip_set_params(list(xVar = "Solar.R", xLab = "Solar radiation in Langleys"))
+
+pip_get_params(pip) |> str()
 
 ## ----show-pipeline-with-outdated-step-------------------------------------------------------------
 pip
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
 library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 100, width = 600))
+) |>
     visHierarchicalLayout(direction = "LR")
 
 ## ----run-pipeline-again---------------------------------------------------------------------------
-pip$run()
+pip_run(pip)
 
 ## ----inspect-plot-again, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----------------
-pip$get_out("model_plot")
+pip[["model_plot", "out"]]
 
 ## ----set-title------------------------------------------------------------------------------------
-pip$set_params(list(title = "Some new title"))
+pip |> pip_set_params(list(title = "Some new title"))
 pip
 
 ## ----inspect-plot-after-title-change, message = FALSE, warning = FALSE, fig.alt = "model-plot"----
-pip$run()$get_out("model_plot")
+pip_run(pip)
+pip[["model_plot", "out"]]
 
 ## -------------------------------------------------------------------------------------------------
-pip$set_data(airquality[1:10, ])
+small_airquality <- airquality[1:10, ]
+pip |> pip_set_params(list(data = small_airquality))
 pip
 
 ## ----inspect-plot-after-data-change, message = FALSE, warning = FALSE, fig.alt = "model-plot"-----
-pip$run()$get_out("model_plot")
+pip_run(pip)
+pip[["model_plot", "out"]]
 
 ## ----set-unknown-parameters, warning = TRUE-------------------------------------------------------
-pip$set_params(list(titel = "misspelled variable name", foo = "my foo"))
+pip |> pip_set_params(list(titel = "misspelled variable name", foo = "my foo"))
 
 ## ----include = FALSE----------------------------------------------------------
 options(old)

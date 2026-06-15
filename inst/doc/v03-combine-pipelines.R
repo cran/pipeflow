@@ -1,34 +1,29 @@
 ## ----knitr-setup, include = FALSE-----------------------------------------------------------------
-require(pipeflow)
-
 knitr::opts_chunk$set(
-  comment = "#",
-  prompt = FALSE,
-  tidy = FALSE,
-  cache = FALSE,
-  collapse = TRUE
+    comment = "#",
+    prompt = FALSE,
+    tidy = FALSE,
+    cache = FALSE,
+    collapse = TRUE
 )
 
 old <- options(width = 100L)
-library(ggplot2)
 
 ## ----define-prepocessing-pipeline-----------------------------------------------------------------
 library(pipeflow)
-library(ggplot2)
 
-pip1 <- pipe_new(
-        "preprocessing",
-        data = airquality
+pip1 <- pip_new("preprocessing") |>
+    pip_add(
+        "data",
+        function(data = airquality) data
     ) |>
-
-    pipe_add(
+    pip_add(
         "data_prep",
         function(data = ~data) {
-            replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5/9)
+            replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5 / 9)
         }
     ) |>
-
-    pipe_add(
+    pip_add(
         "standardize",
         function(
             data = ~data_prep,
@@ -43,12 +38,12 @@ pip1 <- pipe_new(
 pip1
 
 ## ----define-modeling-pipeline---------------------------------------------------------------------
-pip2 <- pipe_new(
-        "modeling",
-        data = airquality
+pip2 <- pip_new("modeling") |>
+    pip_add(
+        "data",
+        function(data = airquality) data
     ) |>
-
-    pipe_add(
+    pip_add(
         "fit",
         function(
             data = ~data,
@@ -58,8 +53,7 @@ pip2 <- pipe_new(
             lm(paste(yVar, "~", xVar), data = data)
         }
     ) |>
-
-    pipe_add(
+    pip_add(
         "plot",
         function(
             model = ~fit,
@@ -68,6 +62,7 @@ pip2 <- pipe_new(
             yVar = "Ozone",
             title = "Linear model fit"
         ) {
+            require(ggplot2, quietly = TRUE)
             coeffs <- coefficients(model)
             ggplot(data) +
                 geom_point(aes(.data[[xVar]], .data[[yVar]])) +
@@ -79,78 +74,81 @@ pip2 <- pipe_new(
 ## -------------------------------------------------------------------------------------------------
 pip2
 
-## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip1$get_graph(), list(height = 100))) |>
-    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
+## -------------------------------------------------------------------------------------------------
+pip <- pip_bind(pip1, pip2)
+
+pip
+
+## ----eval = FALSE---------------------------------------------------------------------------------
+# library(visNetwork)
+# do.call(visNetwork, args = pip_get_graph(pip)) |>
+#     visHierarchicalLayout(direction = "LR")
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
 library(visNetwork)
-do.call(visNetwork, args = c(pip2$get_graph(), list(height = 100))) |>
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 250, width = 500))
+) |>
     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## -------------------------------------------------------------------------------------------------
-pip <- pip1$append(pip2)
+pip |> pip_replace("data2", function(data = ~standardize) data)
 
 pip
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 250))) |>
-    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 100, width = 700))
+) |>
+    visHierarchicalLayout(direction = "LR")
 
 ## -------------------------------------------------------------------------------------------------
-pip$replace_step("data.modeling", function(data = ~standardize) data)
-
-pip
-
-## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
-    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
-
-## -------------------------------------------------------------------------------------------------
-pip$replace_step("data.modeling", function(data = ~-1) data)
+pip |> pip_replace("data2", function(data = ~ -1) data)
 
 pip
 
 ## -------------------------------------------------------------------------------------------------
-pip <- pip1$append(pip2, outAsIn = TRUE)
-
-pip
-
-## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
-    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
-
-## -------------------------------------------------------------------------------------------------
-pip$get_step("data.modeling")[["fun"]]
-
-## -------------------------------------------------------------------------------------------------
-pip$run()
+pip_run(pip)
 
 ## ----fig.alt = "model-plot"-----------------------------------------------------------------------
-pip$get_out("plot")
+pip[["plot", "out"]]
 
 ## -------------------------------------------------------------------------------------------------
-pip$set_params(list(xVar = "Temp.Celsius"))
+pip_set_params(pip, params = list(xVar = "Temp.Celsius"))
 
 ## ----echo = FALSE---------------------------------------------------------------------------------
 library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 100, width = 700))
+) |>
     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## -------------------------------------------------------------------------------------------------
-pip$run()
-
-## ----echo = FALSE---------------------------------------------------------------------------------
-library(visNetwork)
-do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
-    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
+pip_run(pip)
 
 ## ----fig.alt = "model-plot"-----------------------------------------------------------------------
-pip$get_out("plot")
+pip[["plot", "out"]]
+
+## ----cherry-pick----------------------------------------------------------------------------------
+pip <- pip_new("cherry-picked-from-1-and-2") |>
+    pip_add_from(pip1, "data") |>
+    pip_add_from(pip1, "data_prep") |>
+    pip_add_from(pip1, "standardize") |>
+    pip_add_from(pip2, "fit") |>
+    pip_add_from(pip2, "plot")
+
+pip
+
+## ----echo = FALSE---------------------------------------------------------------------------------
+library(visNetwork)
+do.call(
+    visNetwork,
+    args = c(pip_get_graph(pip), list(height = 250, width = 700))
+) |>
+    visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## ----include = FALSE----------------------------------------------------------
 options(old)

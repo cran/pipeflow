@@ -1,109 +1,119 @@
 ## ----knitr-setup, include = FALSE-----------------------------------------------------------------
-require(pipeflow)
-
 knitr::opts_chunk$set(
-  comment = "#",
-  prompt = FALSE,
-  tidy = FALSE,
-  cache = FALSE,
-  collapse = TRUE
+    comment = "#",
+    prompt = FALSE,
+    tidy = FALSE,
+    cache = FALSE,
+    collapse = TRUE
 )
 
 old <- options(width = 100L)
-library(ggplot2)
 
 ## ----define-pipeline, include = FALSE, echo = FALSE-----------------------------------------------
-pip <- Pipeline$new("my-pipeline", data = airquality)
-pip$add(
-    "data_prep",
-    function(data = ~data) {
-        replace(data, "Temp.Celsius", (data[, "Temp"] - 32) * 5/9)
-    }
+library(pipeflow)
+pip <- pip_new("my-pip") |>
+    pip_add(
+        "data",
+        function(data = airquality[1:10, ]) data
+    ) |>
+    pip_add(
+        "data_prep",
+        function(x = ~data) {
+            replace(x, "Temp.Celsius", (x[, "Temp"] - 32) * 5 / 9)
+        }
+    ) |>
+    pip_add(
+        "model_fit",
+        function(
+            data = ~data_prep,
+            xVar = "Temp.Celsius"
+        ) {
+            lm(paste("Ozone ~", xVar), data = data)
+        }
+    ) |>
+    pip_add(
+        "model_plot",
+        function(
+            model = ~model_fit,
+            data = ~data_prep,
+            xVar = "Temp.Celsius",
+            xLab = "Temperature in degrees Celsius",
+            title = "Linear model fit"
+        ) {
+            require(ggplot2, quietly = TRUE)
+            coeffs <- coefficients(model)
+            ggplot(data) +
+                geom_point(aes(.data[[xVar]], .data[["Ozone"]])) +
+                geom_abline(intercept = coeffs[1], slope = coeffs[2]) +
+                labs(title = title, x = xLab)
+        }
+    )
+
+pip |> pip_set_params(
+    list(
+        xVar = "Solar.R",
+        xLab = "Solar radiation in Langleys",
+        title = "Some new title"
+    )
 )
-pip$add(
-    "model_fit",
-    function(
-        data = ~data_prep,
-        xVar = "Temp.Celsius"
-    ) {
-        lm(paste("Ozone ~", xVar), data = data)
-    }
-)
-pip$add(
-    "model_plot",
-    function(
-        model = ~model_fit,
-        data = ~data_prep,
-        xVar = "Temp.Celsius",
-        title = "Linear model fit"
-    ) {
-        coeffs <- coefficients(model)
-        ggplot(data) +
-            geom_point(aes(.data[[xVar]], .data[["Ozone"]])) +
-            geom_abline(intercept = coeffs[1], slope = coeffs[2]) +
-            labs(title = title)
-    }
-)
-pip$set_params(list(xVar = "Solar.R"))
-pip$set_params(list(title = "Some new title"))
-pip$set_data(airquality[1:10, ])
-pip$run()
+
+pip_run(pip, lgr = NULL)
 
 ## ----show-pipeline--------------------------------------------------------------------------------
 pip
 
 ## ----show-data------------------------------------------------------------------------------------
-pip$get_data() |> head(3)
+pip_get_params(pip)[["data"]] |> head(3)
 
 ## ----insert-step----------------------------------------------------------------------------------
-pip$insert_after(
-    afterStep = "data_prep",
-    step = "standardize",
+pip |> pip_add(
+    "standardize",
     function(
         data = ~data_prep,
         yVar = "Ozone"
     ) {
         data[, yVar] <- scale(data[, yVar])
         data
-    }
+    },
+    after = "data_prep"
 )
 
 ## -------------------------------------------------------------------------------------------------
 pip
 
-## ----eval = FALSE, echo = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
+## ----eval = FALSE, echo = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
 # library(visNetwork)
-# do.call(visNetwork, args = pip$get_graph()) |>
+# do.call(visNetwork, args = pip_get_graph(pip)) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
-## ----echo = FALSE, eval = as.logical(Sys.getenv("pipeflow.visNetwork", unset = "FALSE"))----------
+## ----echo = FALSE, eval = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
 # library(visNetwork)
-# do.call(visNetwork, args = c(pip$get_graph(), list(height = 300))) |>
+# do.call(visNetwork, args = c(pip_get_graph(pip), list(height = 300))) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## -------------------------------------------------------------------------------------------------
-pip$get_step("model_fit")[["fun"]]
+pip[["model_fit", "fun"]]
 
 ## ----replace-model-fit-step-----------------------------------------------------------------------
-pip$replace_step(
+pip |> pip_replace(
     "model_fit",
     function(
-        data = ~standardize,        # <- changed data reference
+        data = ~standardize, # <- changed data reference
         xVar = "Temp.Celsius",
-        yVar = "Ozone"              # <- new y-variable
+        yVar = "Ozone" # <- new y-variable
     ) {
         lm(paste(yVar, "~", xVar), data = data)
     }
 )
 
 ## ----replace-model-plot-step----------------------------------------------------------------------
-pip$replace_step(
+pip |> pip_replace(
     "model_plot",
     function(
         model = ~model_fit,
-        data = ~standardize,         # <- changed data reference
+        data = ~standardize, # <- changed data reference
         xVar = "Temp.Celsius",
-        yVar = "Ozone",              # <- new y-variable
+        yVar = "Ozone", # <- new y-variable
         title = "Linear model fit"
     ) {
         coeffs <- coefficients(model)
@@ -117,35 +127,35 @@ pip$replace_step(
 ## -------------------------------------------------------------------------------------------------
 pip
 
-## ----echo = FALSE, eval = getOption("pipeflow.visNetwork", default = FALSE)-----------------------
-# library(visNetwork)
-# do.call(visNetwork, args = c(pip$get_graph(), list(height = 100))) |>
+## ----echo = FALSE, eval = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
+# do.call(visNetwork, args = c(pip_get_graph(pip), list(height = 100))) |>
 #     visHierarchicalLayout(direction = "LR")
 
 ## -------------------------------------------------------------------------------------------------
-pip$set_params(list(xVar = "Solar.R", yVar = "Wind"))
-pip$run()
+pip_set_params(pip, params = list(xVar = "Solar.R", yVar = "Wind"))
+pip_run(pip)
 
 ## -------------------------------------------------------------------------------------------------
-pip$get_out("model_fit") |> coefficients()
+pip[["model_fit", "out"]] |> coefficients()
 
-## ----fig.alt = "model-plot"-----------------------------------------------------------------------
-pip$get_out("model_plot")
+## ----fig.alt = "model-plot", warning = FALSE, message = FALSE-------------------------------------
+pip[["model_plot", "out"]]
 
 ## -------------------------------------------------------------------------------------------------
 pip
 
 ## ----try-remove-step------------------------------------------------------------------------------
-try(pip$remove_step("standardize"))
+try(pip_remove(pip, "standardize"))
 
 ## ----remove-steps-recursively---------------------------------------------------------------------
-pip$remove_step("standardize", recursive = TRUE)
+pip_remove(pip, "standardize", recursive = TRUE)
 
 ## -------------------------------------------------------------------------------------------------
 pip
 
 ## -------------------------------------------------------------------------------------------------
-pip$pop_step()
+last_step <- tail(pip[["step"]], 1)
+pip_remove(pip, last_step)
 
 ## -------------------------------------------------------------------------------------------------
 pip

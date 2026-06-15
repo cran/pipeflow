@@ -5645,16 +5645,17 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <div id="TOC">
 <ul>
-<li><a href="#define-two-pipelines" id="toc-define-two-pipelines">Define
-two pipelines</a></li>
-<li><a href="#combine-pipelines" id="toc-combine-pipelines">Combine
-pipelines</a>
+<li><a href="#two-pipelines" id="toc-two-pipelines">Two
+pipelines</a></li>
+<li><a href="#combined-pipeline" id="toc-combined-pipeline">Combined
+pipeline</a>
 <ul>
 <li><a href="#relative-indexing" id="toc-relative-indexing">Relative
 indexing</a></li>
 </ul></li>
-<li><a href="#run-combined-pipeline" id="toc-run-combined-pipeline">Run
-combined pipeline</a></li>
+<li><a href="#combined-pipeline-results" id="toc-combined-pipeline-results">Combined pipeline results</a></li>
+<li><a href="#step-cherry-picking" id="toc-step-cherry-picking">Step
+cherry-picking</a></li>
 </ul>
 </div>
 
@@ -5662,54 +5663,48 @@ combined pipeline</a></li>
 the pipeline creation process. This is especially useful when you have a
 set of pipelines that are used in different contexts and you want to
 avoid code duplication.</p>
-<p>In this vignette we will also introduce the pipeflow alias functions,
-that is, for each member function of a pipeline, there is an alias
-function, which allows to create chain pipeline steps using R’s native
-pipe operator <code>|&gt;</code>. For example, the <code>add</code>
-function has an alias <code>pipe_add</code> (see below).</p>
-<div id="define-two-pipelines" class="section level3">
-<h3>Define two pipelines</h3>
-<p>Let’s define one pipeline that is used for data_preprocessing and one
+<div id="two-pipelines" class="section level3">
+<h3>Two pipelines</h3>
+<p>Let’s define one pipeline that is used for data preprocessing and one
 that does the modeling.</p>
 <p>Data preprocessing pipeline:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>pip1 <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>        <span class="st">&quot;preprocessing&quot;</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="at">data =</span> airquality</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip1 <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;preprocessing&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>        <span class="st">&quot;data&quot;</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> airquality) data</span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>        <span class="st">&quot;data_prep&quot;</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>data) {</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>            <span class="fu">replace</span>(data, <span class="st">&quot;Temp.Celsius&quot;</span>, (data[, <span class="st">&quot;Temp&quot;</span>] <span class="sc">-</span> <span class="dv">32</span>) <span class="sc">*</span> <span class="dv">5</span><span class="sc">/</span><span class="dv">9</span>)</span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>        }</span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>        <span class="st">&quot;standardize&quot;</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>        ) {</span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>            data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
-<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>            data</span>
-<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>        }</span>
-<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>    )</span></code></pre></div>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        <span class="st">&quot;data_prep&quot;</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>data) {</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>            <span class="fu">replace</span>(data, <span class="st">&quot;Temp.Celsius&quot;</span>, (data[, <span class="st">&quot;Temp&quot;</span>] <span class="sc">-</span> <span class="dv">32</span>) <span class="sc">*</span> <span class="dv">5</span> <span class="sc">/</span> <span class="dv">9</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>        }</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>        <span class="st">&quot;standardize&quot;</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>        <span class="cf">function</span>(</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>        ) {</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>            data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>            data</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>        }</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>    )</span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>pip1</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#           step   depends    out keepOut       group  state</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#         &lt;char&gt;    &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># 1:        data           [NULL]   FALSE        data    New</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 2:   data_prep      data [NULL]   FALSE   data_prep    New</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 3: standardize data_prep [NULL]   FALSE standardize    New</span></span></code></pre></div>
-<p>Modeling pipeline:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip2 <span class="ot">&lt;-</span> <span class="fu">pipe_new</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>        <span class="st">&quot;modeling&quot;</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>        <span class="at">data =</span> airquality</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; preprocessing (3 steps)</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># --------------------------------------</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#           step   depends    out state</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 1:        data           [NULL]   new</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 2:   data_prep      data [NULL]   new</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># 3: standardize data_prep [NULL]   new</span></span></code></pre></div>
+<p>Modelling pipeline:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip2 <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;modeling&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>        <span class="st">&quot;data&quot;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> airquality) data</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
 <span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        <span class="cf">function</span>(</span>
 <span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
@@ -5719,16 +5714,16 @@ that does the modeling.</p>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
 <span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>        }</span>
 <span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>    <span class="fu">pipe_add</span>(</span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>        <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>            <span class="at">model =</span> <span class="sc">~</span>fit,</span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp&quot;</span>,</span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>,</span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>        ) {</span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>        <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>        <span class="cf">function</span>(</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>            <span class="at">model =</span> <span class="sc">~</span>fit,</span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp&quot;</span>,</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>,</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>        ) {</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>            <span class="fu">require</span>(ggplot2, <span class="at">quietly =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>            coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
 <span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>            <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
 <span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>                <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
@@ -5737,163 +5732,157 @@ that does the modeling.</p>
 <span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a>        }</span>
 <span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>    )</span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip2</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co">#      step  depends    out keepOut  group  state</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;   &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt; &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># 1:   data          [NULL]   FALSE   data    New</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 2:    fit     data [NULL]   FALSE    fit    New</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 3:   plot fit,data [NULL]   FALSE   plot    New</span></span></code></pre></div>
-<p>Graphically, the two pipelines look as follows:</p>
-<div id="htmlwidget-1548192a6b86beac57c7" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-1548192a6b86beac57c7">{"x":{"nodes":{"id":[1,2,3],"label":["data","data_prep","standardize"],"group":["data","data_prep","standardize"],"shape":["database","database","box"],"color":["lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2],"to":[2,3],"arrows":["to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<div id="htmlwidget-ec6a850bfaf692391378" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-ec6a850bfaf692391378">{"x":{"nodes":{"id":[1,2,3],"label":["data","fit","plot"],"group":["data","fit","plot"],"shape":["database","box","box"],"color":["lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,1,2],"to":[2,3,3],"arrows":["to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; modeling (3 steps)</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># ---------------------------------</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#    step  depends    out state</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 1: data          [NULL]   new</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 2:  fit     data [NULL]   new</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 3: plot fit,data [NULL]   new</span></span></code></pre></div>
 </div>
-<div id="combine-pipelines" class="section level3">
-<h3>Combine pipelines</h3>
-<p>Next we combine the two pipelines. We can do this by using the
-<code>append</code> function.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> pip1<span class="sc">$</span><span class="fu">append</span>(pip2)</span>
+<div id="combined-pipeline" class="section level3">
+<h3>Combined pipeline</h3>
+<p>Next we combine the two pipelines using <code>pip_bind()</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_bind</span>(pip1, pip2)</span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut       group  state</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;      &lt;char&gt; &lt;char&gt;</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE        data    New</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE   data_prep    New</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE standardize    New</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 4: data.modeling                   [NULL]   FALSE        data    New</span></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE         fit    New</span></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE        plot    New</span></span></code></pre></div>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; preprocessing-modeling (6 steps)</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#           step   depends    out state</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 1:        data           [NULL]   new</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 2:   data_prep      data [NULL]   new</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 3: standardize data_prep [NULL]   new</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 4:       data2           [NULL]   new</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 5:         fit     data2 [NULL]   new</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># 6:        plot fit,data2 [NULL]   new</span></span></code></pre></div>
 <p>First of all, note that the <code>data</code> step of the second
-pipeline has been appended with the name of the second pipeline. In
+pipeline has been renamed automatically to avoid name clashes. In
 particular, the first step of the second pipeline has been renamed from
-<code>data</code> to <code>data.modeling</code> (line 4 in the
-<code>step</code> column) and likewise the dependencies of the second
-pipeline have been updated (see lines 5-6 in the <code>depends</code>
-column).</p>
-<p>That is, when appending two pipelines, <code>pipeflow</code> ensures
-that the step names remain unique in the resulting combined pipeline and
-therefore automatically renames duplicated step names if necessary.</p>
+<code>data</code> to <code>data2</code> (line 4 in the <code>step</code>
+column) and likewise the data-dependencies of the second pipeline have
+been updated (see lines 5-6 in the <code>depends</code> column).</p>
+<p>That is, when binding two pipelines, {pipeflow} ensures that the step
+names remain unique in the resulting combined pipeline and therefore
+automatically renames duplicated step names if necessary.</p>
 <p>Now, as can be also seen from the graphical representation of the
 pipeline,</p>
-<div id="htmlwidget-19fd8df38e7496a369ee" style="width:288px;height:250px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-19fd8df38e7496a369ee">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","lightblue","lightblue"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,4,4,5],"to":[2,3,5,6,6],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","fit","plot"],"width":null,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> <span class="fu">pip_get_graph</span>(pip)) <span class="sc">|&gt;</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>)</span></code></pre></div>
+<div id="htmlwidget-4c5a19c604c8bc5a0c6b" style="width:500px;height:250px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4c5a19c604c8bc5a0c6b">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","data_prep","standardize","data2","fit","plot"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff"]},"edges":{"from":[0,1,3,4,3],"to":[1,2,4,5,5],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":500,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 <p>the two pipelines are not yet connected. To make actual use of the
-combined pipeline, we therefore want to use the output of the first
-pipeline as input of the second pipeline, that is, we want to use the
-output of the <code>standardize</code> step as the data parameter input
-in the <code>data.modeling</code> step. One way to achieve this would be
-to use the <code>replace</code> function as described earlier in the
-vignette <a href="v02-modify-pipeline.html">modify the pipeline</a>, for
-example:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(<span class="st">&quot;data.modeling&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>standardize) data)</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>pip</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
-<div id="htmlwidget-f068c19c457a845c86d8" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f068c19c457a845c86d8">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<div id="relative-indexing" class="section level4">
-<h4>Relative indexing</h4>
-<p>Since the name of the last step might not always be known<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>, the
-<code>pipeflow</code> package also provides a relative position indexing
-mechanism, which allows to rewrite the above command as follows:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">replace_step</span>(<span class="st">&quot;data.modeling&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~-</span><span class="dv">1</span>) data)</span>
+combined pipeline, we have to use the output of the first pipeline as
+input of the second pipeline, that is, we want to use the output of the
+<code>standardize</code> step as the data parameter input in the
+<code>data2</code> step. To achieve this, we apply the
+<code>replace</code> function as described earlier in the vignette <a href="v02-modify-pipeline.html">modify the pipeline</a>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(<span class="st">&quot;data2&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>standardize) data)</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>pip</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; preprocessing-modeling (6 steps)</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#           step     depends    out    state</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># 1:        data             [NULL]      new</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># 2:   data_prep        data [NULL]      new</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># 3: standardize   data_prep [NULL]      new</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># 4:       data2 standardize [NULL]      new</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># 5:         fit       data2 [NULL] outdated</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co"># 6:        plot   fit,data2 [NULL] outdated</span></span></code></pre></div>
+<div id="htmlwidget-902dab0f835f81a2a80d" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-902dab0f835f81a2a80d">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","data_prep","standardize","data2","fit","plot"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#ffa040ff","#ffa040ff"]},"edges":{"from":[0,1,2,3,4,3],"to":[1,2,3,4,5,5],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="relative-indexing" class="section level4">
+<h4>Relative indexing</h4>
+<p>Since the name of the re-routed step might not always be known<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>, the
+{pipeflow} package also provides a relative position indexing mechanism,
+which allows to rewrite the above command as follows:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(<span class="st">&quot;data2&quot;</span>, <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">1</span>) data)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>pip</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; preprocessing-modeling (6 steps)</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#           step     depends    out    state</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 1:        data             [NULL]      new</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 2:   data_prep        data [NULL]      new</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 3: standardize   data_prep [NULL]      new</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># 4:       data2 standardize [NULL]      new</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># 5:         fit       data2 [NULL] outdated</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># 6:        plot   fit,data2 [NULL] outdated</span></span></code></pre></div>
 <p>Generally speaking, the relative indexing mechanism allows to refer
 to steps positioned above the current step. The index <code>~-1</code>
 can be interpreted as “go one step back”, <code>~-2</code> as “go two
 steps back”, and so on.</p>
-<p>Since the scenario of connecting two pipelines is so common and to
-avoid having to do the above replacement steps manually, the
-<code>append</code> function actually provides an argument
-<code>outAsIn</code> that allows for appending and “connecting” both
-pipelines in one go:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> pip1<span class="sc">$</span><span class="fu">append</span>(pip2, <span class="at">outAsIn =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>pip</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#             step           depends    out keepOut         group    state</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#           &lt;char&gt;            &lt;list&gt; &lt;list&gt;  &lt;lgcl&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 1:          data                   [NULL]   FALSE          data      New</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 2:     data_prep              data [NULL]   FALSE     data_prep      New</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 3:   standardize         data_prep [NULL]   FALSE   standardize      New</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 4: data.modeling       standardize [NULL]   FALSE data.modeling      New</span></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># 5:           fit     data.modeling [NULL]   FALSE           fit Outdated</span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># 6:          plot fit,data.modeling [NULL]   FALSE          plot Outdated</span></span></code></pre></div>
-<div id="htmlwidget-013ac9a69d2c5f982601" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-013ac9a69d2c5f982601">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightblue","lightblue","lightblue","lightblue","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<p>If we inspect the <code>data.modeling</code> step, we see that “under
-the hood” the original step indeed has been replaced by the output of
-the last step of the first pipeline using the same relative indexing
-mechanism we did manually before.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_step</span>(<span class="st">&quot;data.modeling&quot;</span>)[[<span class="st">&quot;fun&quot;</span>]]</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># [[1]]</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># function (data = ~-1) </span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># data</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># &lt;bytecode: 0x0000022363a3c630&gt;</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># &lt;environment: 0x0000022362f8cd30&gt;</span></span></code></pre></div>
 </div>
 </div>
-<div id="run-combined-pipeline" class="section level3">
-<h3>Run combined pipeline</h3>
+<div id="combined-pipeline-results" class="section level3">
+<h3>Combined pipeline results</h3>
 <p>Let’s now run the combined pipeline and inspect the plot.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.845] Start run of &#39;preprocessing.modeling&#39; pipeline:</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.846] Step 1/6 data</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.849] Step 2/6 data_prep</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.866] Step 3/6 standardize</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.869] Step 4/6 data.modeling</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.871] Step 5/6 fit</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.874] Step 6/6 plot</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.879] Finished execution of steps.</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:25.880] Done.</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.591 UTC]: Start run of pipeflow_pip &#39;preprocessing-modeling&#39;</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.592 UTC]: Step 1/6 data</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.592 UTC]: Step 2/6 data_prep</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.594 UTC]: Step 3/6 standardize</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.596 UTC]: Step 4/6 data2</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.597 UTC]: Step 5/6 fit</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.599 UTC]: Step 6/6 plot</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.609 UTC]: Finished run of pipeflow_pip &#39;preprocessing-modeling&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
 <p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
-<p>As we can see, the plot shows the linear model fit using the
+<p>As we can see, the plot shows the linear model fit of the
 standardized data. We can now go ahead and for example change the
 x-variable of the model and rerun the pipeline.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">set_params</span>(<span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>))</span></code></pre></div>
-<div id="htmlwidget-31afc223b0384f5eb5bc" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-31afc223b0384f5eb5bc">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightgreen","lightgreen","lightgreen","lightgreen","orange","orange"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">run</span>()</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.163] Start run of &#39;preprocessing.modeling&#39; pipeline:</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.164] Step 1/6 data - skip &#39;done&#39; step</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.165] Step 2/6 data_prep - skip &#39;done&#39; step</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.166] Step 3/6 standardize - skip &#39;done&#39; step</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.167] Step 4/6 data.modeling - skip &#39;done&#39; step</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.168] Step 5/6 fit</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.172] Step 6/6 plot</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.182] Finished execution of steps.</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># INFO  [2025-07-26 20:25:26.182] Done.</span></span></code></pre></div>
-<div id="htmlwidget-87416f593b7f2ebe3fbf" style="width:288px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-87416f593b7f2ebe3fbf">{"x":{"nodes":{"id":[1,2,3,4,5,6],"label":["data","data_prep","standardize","data.modeling","fit","plot"],"group":["data","data_prep","standardize","data.modeling","fit","plot"],"shape":["database","database","box","database","box","box"],"color":["lightgreen","lightgreen","lightgreen","lightgreen","lightgreen","lightgreen"],"title":["<p><\/p>","<p><\/p>","<p><\/p>","<p>output of last step of first pipeline<\/p>","<p><\/p>","<p><\/p>"]},"edges":{"from":[1,2,3,4,4,5],"to":[2,3,4,5,6,6],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":["data","data_prep","standardize","data.modeling","fit","plot"],"width":null,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">get_out</span>(<span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>))</span></code></pre></div>
+<div id="htmlwidget-34324c44bb63d86311f6" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-34324c44bb63d86311f6">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","data_prep","standardize","data2","fit","plot"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#87ff6fff","#87ff6fff","#87ff6fff","#87ff6fff","#ffa040ff","#ffa040ff"]},"edges":{"from":[0,1,2,3,4,3],"to":[1,2,3,4,5,5],"arrows":["to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Start run of pipeflow_pip &#39;preprocessing-modeling&#39;</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Step 1/6 data - skipping done step</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Step 2/6 data_prep - skipping done step</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Step 3/6 standardize - skipping done step</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Step 4/6 data2 - skipping done step</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.915 UTC]: Step 5/6 fit</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.919 UTC]: Step 6/6 plot</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:07.933 UTC]: Finished run of pipeflow_pip &#39;preprocessing-modeling&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># Warning: Removed 37 rows containing missing values or values outside the scale range</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># (`geom_point()`).</span></span></code></pre></div>
 <p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
-<p>When creating these pipelines, usually there will be a lot of steps
-calculating intermediate results and only a few steps contain the final
-results that we are interested in. In the above example, we were
-interested in the final plot output. In a real-world scenario, the
-pipeline would contain many more steps that are not of interest to us.
-To see how to conveniently tag, collect and possibly group the output of
-those final steps, see the next vignette <a href="v04-collect-output.html">Collecting output</a>.</p>
+</div>
+<div id="step-cherry-picking" class="section level3">
+<h3>Step cherry-picking</h3>
+<p>Another way to re-use steps from other pipelines is by
+cherry-picking, which can be done via <code>pip_add_from</code>, for
+example:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;cherry-picked-from-1-and-2&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>    <span class="fu">pip_add_from</span>(pip1, <span class="st">&quot;data&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>    <span class="fu">pip_add_from</span>(pip1, <span class="st">&quot;data_prep&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    <span class="fu">pip_add_from</span>(pip1, <span class="st">&quot;standardize&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>    <span class="fu">pip_add_from</span>(pip2, <span class="st">&quot;fit&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="fu">pip_add_from</span>(pip2, <span class="st">&quot;plot&quot;</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>pip</span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; cherry-picked-from-1-and-2 (5 steps)</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co"># ---------------------------------------------------</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#           step   depends    out state</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># 1:        data           [NULL]   new</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co"># 2:   data_prep      data [NULL]   new</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co"># 3: standardize data_prep [NULL]   new</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co"># 4:         fit      data [NULL]   new</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co"># 5:        plot  fit,data [NULL]   new</span></span></code></pre></div>
+<p>Note that here the cherry-pick approach is not all that useful,
+because in contrast to the <code>pip_bind</code> command, which renames
+<code>data</code> to <code>data2</code>, the cherry-picked
+<code>fit</code> and <code>plot</code> steps still refer to the initial
+<code>data</code> step.</p>
+<div id="htmlwidget-0c045a99ba727241b097" style="width:700px;height:250px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-0c045a99ba727241b097">{"x":{"nodes":{"id":[0,1,2,3,4],"label":["data","data_prep","standardize","fit","plot"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff"]},"edges":{"from":[0,1,0,3,0],"to":[1,2,3,4,4],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":700,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<p>In other scenarios, however, this might be exactly what you want.</p>
+<p>Generally, when creating these pipelines, there will be a lot of
+steps calculating intermediate results and only a few steps contain the
+final output we are interested in (see e.g. the <code>plot</code> output
+in the above example). To see how {pipeflow} allows to conveniently tag,
+collect and possibly group those final outputs, see the next vignette <a href="v04-collect-output.html">Collecting and filtering output</a>.</p>
 </div>
 <div class="footnotes footnotes-end-of-document">
 <hr />

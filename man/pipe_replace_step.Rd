@@ -50,6 +50,10 @@ returns the \code{Pipeline} object invisibly
 \description{
 Replaces an existing pipeline step.
 }
+\section{Lifecycle}{
+ Deprecated. Legacy API. Use \code{\link[=pip_replace]{pip_replace()}} instead.
+}
+
 \examples{
 p <- pipe_new("pipe", data = 1)
 pipe_add(p, "add1", \(x = ~data, y = 1) x + y)
@@ -58,8 +62,9 @@ pipe_add(p, "mult", \(x = 1, y = 2) x * y, keepOut = TRUE)
 pipe_run(p) |> pipe_collect_out()
 pipe_replace_step(p, "mult", \(x = ~add1, y = ~add2) x * y, keepOut = TRUE)
 pipe_run(p) |> pipe_collect_out()
-try(pipe_replace_step(p, "foo", \(x = 1) x))   # step 'foo' does not exist
+try(pipe_replace_step(p, "foo", \(x = 1) x)) # step 'foo' does not exist
 }
 \seealso{
 \code{\link[=pipe_add]{pipe_add()}}
 }
+\keyword{internal}
