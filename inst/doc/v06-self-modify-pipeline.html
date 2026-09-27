@@ -12,7 +12,7 @@
 
 
 
-<title>Recursive self-modification</title>
+<title>Self-modifying pipelines</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -48,9 +48,8 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
-html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -337,473 +336,382 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Recursive self-modification</h1>
+<h1 class="title toc-ignore">Self-modifying pipelines</h1>
 
 
 <div id="TOC">
 <ul>
-<li><a href="#the-pipeline-object" id="toc-the-pipeline-object">The
-pipeline object</a></li>
-<li><a href="#changing-pipeline-parameters-at-runtime" id="toc-changing-pipeline-parameters-at-runtime">Changing pipeline
-parameters at runtime</a></li>
-<li><a href="#changing-pipeline-structure-at-runtime" id="toc-changing-pipeline-structure-at-runtime">Changing pipeline
-structure at runtime</a>
+<li><a href="#internal-pipeline-structure" id="toc-internal-pipeline-structure">Internal pipeline
+structure</a></li>
+<li><a href="#changing-the-pipeline-structure-at-runtime" id="toc-changing-the-pipeline-structure-at-runtime">Changing the
+pipeline structure at runtime</a>
 <ul>
 <li><a href="#modify-steps" id="toc-modify-steps">Modify steps</a></li>
 <li><a href="#insert-and-remove-steps" id="toc-insert-and-remove-steps">Insert and remove steps</a></li>
 </ul></li>
+<li><a href="#invoke-restart-during-run" id="toc-invoke-restart-during-run">Invoke restart during run</a></li>
 </ul>
 </div>
 
-<p>The {pipeflow} package aims to offer a lean and intuitive interface
-that enables new users to get started quickly without having to learn a
-lot of new concepts and functions.</p>
-<p>At the same time, it was also designed to provide easy access to the
-underlying data structures to allow advanced users to modify the
-pipeline basically in any way they want. As such pipelines not only can
-be modified before but also during execution, respectively. This opens
-up a wide range of possibilities, for example, to change parameters
-based on intermediate results or even to modify the pipeline structure
-itself during a pipeline run. In the following, we will show some
-examples of how this can be done.</p>
-<div id="the-pipeline-object" class="section level3">
-<h3>The pipeline object</h3>
-<p>Let’s first define a pipeline, which fits a linear model, checks it’s
-residuals for normality using the Shapiro-Wilk test, and plots the
-residuals.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>        <span class="st">&quot;data&quot;</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> <span class="cn">NULL</span>) data</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data,</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;x&quot;</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;y&quot;</span></span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>        ) {</span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>        }</span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>        <span class="st">&quot;residual_shapiro_p_value&quot;</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">fit =</span> <span class="sc">~</span>fit) {</span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>            residuals <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit)</span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>            <span class="fu">shapiro.test</span>(residuals)<span class="sc">$</span>p.value</span>
-<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>        }</span>
-<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>        <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>            <span class="at">fit =</span> <span class="sc">~</span>fit,</span>
-<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>            <span class="at">pointColor =</span> <span class="st">&quot;black&quot;</span></span>
-<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>        ) {</span>
-<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>            <span class="fu">require</span>(ggplot2, <span class="at">quietly =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a>            data <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a>                <span class="at">fitted =</span> <span class="fu">predict</span>(fit),</span>
-<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a>                <span class="at">residuals =</span> <span class="fu">residuals</span>(fit)</span>
-<span id="cb1-35"><a href="#cb1-35" tabindex="-1"></a>            )</span>
-<span id="cb1-36"><a href="#cb1-36" tabindex="-1"></a></span>
-<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a>            <span class="fu">ggplot</span>(data, <span class="fu">aes</span>(<span class="at">x =</span> fitted, <span class="at">y =</span> residuals)) <span class="sc">+</span></span>
-<span id="cb1-38"><a href="#cb1-38" tabindex="-1"></a>                <span class="fu">geom_point</span>(<span class="at">shape =</span> <span class="dv">21</span>, <span class="at">color =</span> pointColor) <span class="sc">+</span></span>
-<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a>                <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
-<span id="cb1-40"><a href="#cb1-40" tabindex="-1"></a>                <span class="fu">theme_minimal</span>()</span>
-<span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a>        }</span>
-<span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a>    )</span></code></pre></div>
-<p>If you have followed the previous vignettes, you by now are used to
-the pipeline overview.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>pip</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (4 steps)</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#                        step depends    out state</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 1:                     data         [NULL]   new</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 2:                      fit    data [NULL]   new</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># 3: residual_shapiro_p_value     fit [NULL]   new</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co"># 4:                     plot     fit [NULL]   new</span></span></code></pre></div>
-<p>To inspect the internal structure, let’s start with the class.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">class</span>(pip)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># [1] &quot;pipeflow_pip&quot; &quot;environment&quot;</span></span></code></pre></div>
-<p>As we can see, the pipeline object is stored in an environment.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">ls</span>(pip)</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># [1] &quot;name&quot;     &quot;pipeline&quot;</span></span></code></pre></div>
-<p>There is the “name” of the pipeline, which is just a character
-string. The most interesting object is the “pipeline”, object, which
-under the hood is a <code>data.table</code> object containing all the
-information about the steps, their dependencies, meta information, and
-so on.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">data.class</span>(pip<span class="sc">$</span>pipeline)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># [1] &quot;data.table&quot;</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>pip<span class="sc">$</span>pipeline</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#                        step           fun    params                              signature depends</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#                      &lt;char&gt;        &lt;list&gt;    &lt;list&gt;                                 &lt;char&gt;  &lt;list&gt;</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 1:                     data &lt;function[1]&gt; &lt;list[1]&gt;                          (data = NULL)        </span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 2:                      fit &lt;function[1]&gt; &lt;list[3]&gt; (data = ~data, xVar = &quot;x&quot;, yVar = &quot;y&quot;)    data</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 3: residual_shapiro_p_value &lt;function[1]&gt; &lt;list[1]&gt;                           (fit = ~fit)     fit</span></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 4:                     plot &lt;function[1]&gt; &lt;list[2]&gt;     (fit = ~fit, pointColor = &quot;black&quot;)     fit</span></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#       out  state   tags                time locked   exec .nodeId    .indeps</span></span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co">#    &lt;list&gt; &lt;char&gt; &lt;list&gt;              &lt;POSc&gt; &lt;lgcl&gt; &lt;char&gt;   &lt;int&gt;     &lt;list&gt;</span></span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># 1: [NULL]    new        2026-06-14 22:27:11  FALSE   auto       0       data</span></span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># 2: [NULL]    new        2026-06-14 22:27:11  FALSE   auto       1  xVar,yVar</span></span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co"># 3: [NULL]    new        2026-06-14 22:27:11  FALSE   auto       2           </span></span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co"># 4: [NULL]    new        2026-06-14 22:27:11  FALSE   auto       3 pointColor</span></span></code></pre></div>
+<div id="internal-pipeline-structure" class="section level3">
+<h3>Internal pipeline structure</h3>
+<p>{pipeflow} aims to offer a lean and intuitive interface that enables
+new users to get started quickly without having to learn a lot of new
+functions. At the same time, it was designed to provide easy access to
+the underlying data structures to allow advanced users to modify the
+pipeline basically in any way they want.</p>
+<p>To see this, let’s briefly inspect the internal structure of a
+pipeline object.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, \(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f2&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="fu">str</span>(pip)</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co"># List of 3</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co">#  $ name  : chr &quot;my-pipeline&quot;</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co">#  $ view  : NULL</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co">#  $ pipenv:&lt;environment: 0x5606dea62dc0&gt;</span></span></code></pre></div>
+<p>There is the <code>name</code> of the pipeline, which is just a
+character string, as well as a <code>view</code> entry, which is
+undefined initially.</p>
+<p>The most “interesting” part is the <code>pipenv</code>: an
+environment that holds the pipeline’s actual state. It is shared by the
+pipeline and all of its views, which is why operations on a view write
+through to the underlying pipeline.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">ls</span>(pip<span class="sc">$</span>pipenv)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># [1] &quot;data&quot;</span></span></code></pre></div>
+<p>Listing the <code>pipenv</code><a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> reveals the <code>data</code>entry, which
+contains the pipeline’s step table as a <code>data.table</code> with one
+row per step:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip<span class="sc">$</span>pipenv<span class="sc">$</span>data <span class="co"># or pip_data(pip)</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#      step           fun    params    out  state   tags locked   exec                time depends unbound nodeId</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#    &lt;char&gt;        &lt;list&gt;    &lt;list&gt; &lt;list&gt; &lt;char&gt; &lt;list&gt; &lt;lgcl&gt; &lt;char&gt;              &lt;POSc&gt;  &lt;list&gt;  &lt;list&gt;  &lt;int&gt;</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># 1:   init &lt;function[1]&gt; &lt;list[1]&gt; [NULL]    new         FALSE   auto 2026-09-27 20:21:17           xInit      0</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># 2:     f1 &lt;function[1]&gt; &lt;list[1]&gt; [NULL]    new         FALSE   auto 2026-09-27 20:21:17    init              1</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># 3:     f2 &lt;function[1]&gt; &lt;list[1]&gt; [NULL]    new         FALSE   auto 2026-09-27 20:21:17      f1              2</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># 4:     f3 &lt;function[1]&gt; &lt;list[1]&gt; [NULL]    new         FALSE   auto 2026-09-27 20:21:17      f2              3</span></span></code></pre></div>
+<p>Many of the columns should be already familar to you and most of them
+can be manipulated safely via the <code>[&lt;-</code> and
+<code>[[&lt;-</code> operators, for example:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip[[<span class="st">&quot;f2&quot;</span>, <span class="st">&quot;step&quot;</span>]] <span class="ot">&lt;-</span> <span class="st">&quot;my_pretty_f2&quot;</span> <span class="co"># updates downstream &#39;depends&#39;</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>pip</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pipeline (4 steps)</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co">#            step params      depends state</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 1:         init  xInit                new</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># 2:           f1      x         init   new</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># 3: my_pretty_f2      x           f1   new</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># 4:           f3      x my_pretty_f2   new</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip[step <span class="sc">%like%</span> <span class="st">&quot;f&quot;</span>, <span class="st">&quot;locked&quot;</span>] <span class="ot">&lt;-</span> <span class="cn">TRUE</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pipeline (4 steps)</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#            step params      depends state locked</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 1:         init  xInit                new  FALSE</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 2:           f1      x         init   new   TRUE</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 3: my_pretty_f2      x           f1   new   TRUE</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 4:           f3      x my_pretty_f2   new   TRUE</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+<p>An exception are the last three columns (<code>depends</code>,
+<code>unbound</code>, <code>nodeId</code>): these are usually derived
+indirectly from the step definition and therefore protected against
+direct assignment.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip[[<span class="st">&quot;init&quot;</span>, <span class="st">&quot;nodeId&quot;</span>]] <span class="ot">&lt;-</span> <span class="dv">99</span><span class="dt">L</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co"># Error in `[[&lt;-.pipeflow`:</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># ! direct assignment to column &#39;nodeId&#39; is not supported.</span></span></code></pre></div>
+<p>Of course, you can even skip the <code>[&lt;-</code> and
+<code>[[&lt;-</code> operators and work directly on the
+<code>data.table</code> object, but with an increased risk to invalidate
+the internal consistency of the overall pipeline structure, for
+example:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>dat <span class="ot">&lt;-</span> pip<span class="sc">$</span>pipenv<span class="sc">$</span>data</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>dat[<span class="dv">2</span>, <span class="st">&quot;step&quot;</span>] <span class="ot">&lt;-</span> <span class="st">&quot;new f1 name&quot;</span> <span class="co"># fails to update downstream &#39;depends&#39;</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>dat[<span class="dv">3</span>, <span class="st">&quot;nodeId&quot;</span>] <span class="ot">&lt;-</span> <span class="dv">99</span><span class="dt">L</span> <span class="co"># breaks link to internal DAG node</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">assign</span>(<span class="st">&quot;data&quot;</span>, dat, <span class="at">envir =</span> pip<span class="sc">$</span>pipenv)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>pip</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pipeline (4 steps)</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#            step params      depends state locked</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># 1:         init  xInit                new  FALSE</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># 2:  new f1 name      x         init   new   TRUE</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co"># 3: my_pretty_f2      x           f1   new   TRUE</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co"># 4:           f3      x my_pretty_f2   new   TRUE</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+<p>For this reason, direct manipulation is useful during debugging and
+you should mostly stick to the provided operators or functions unless
+you really know what you are doing.</p>
 </div>
-<div id="changing-pipeline-parameters-at-runtime" class="section level3">
-<h3>Changing pipeline parameters at runtime</h3>
-<p>First, we set some data and parameters and run the pipeline as
-usual.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">data =</span> airquality, <span class="at">xVar =</span> <span class="st">&quot;Ozone&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Temp&quot;</span>))</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.182 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.182 UTC]: Step 1/4 data</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.183 UTC]: Step 2/4 fit</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.185 UTC]: Step 3/4 residual_shapiro_p_value</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.186 UTC]: Step 4/4 plot</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.226 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a></span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" aria-label="residual-plot" src="data:image/png;base64,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" alt="residual-plot" /></p>
-<p>Now let’s imagine, we want to change the color of the points in the
-plot depending on the Shapiro-Wilk test result. The obvious way to do
-this would be to change the <code>plot</code> step by passing the test
-result to the <code>plot</code> step function and change the color
-there.</p>
-<p>However, here we are interested in another way that would keep the
-<code>plot</code> function unchanged. For example, we could run the
-pipeline a second time as follows:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="cf">if</span> (pip[[<span class="st">&quot;residual_shapiro_p_value&quot;</span>, <span class="st">&quot;out&quot;</span>]] <span class="sc">&lt;</span> <span class="fl">0.05</span>) {</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    pip <span class="sc">|&gt;</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>        <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">pointColor =</span> <span class="st">&quot;red&quot;</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        <span class="fu">pip_run</span>()</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>}</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.428 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.428 UTC]: Step 1/4 data - skipping done step</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.428 UTC]: Step 2/4 fit - skipping done step</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.429 UTC]: Step 3/4 residual_shapiro_p_value - skipping done step</span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.429 UTC]: Step 4/4 plot</span></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.475 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" aria-label="residual-plot" src="data:image/png;base64,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" alt="residual-plot" /></p>
-<p>As was mentioned in another vignette, this solution is not ideal, as
-it requires to run additional code around the pipeline. We rather want
-to set the parameter from within the pipeline during execution.</p>
-<p>Luckily, the pipeline by default assigns itself to the
-<code>.self</code> parameter to potentially be used in any step
-functions. With this in mind, we update the
-<code>residual_shapiro_p_value</code> step as follows:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="st">&quot;residual_shapiro_p_value&quot;</span>,</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>        <span class="at">fit =</span> <span class="sc">~</span>fit,</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>        <span class="at">.self =</span> <span class="cn">NULL</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    ) {</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>        residuals <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit)</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        p <span class="ot">&lt;-</span> <span class="fu">shapiro.test</span>(residuals)<span class="sc">$</span>p.value</span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>        <span class="cf">if</span> (p <span class="sc">&lt;</span> <span class="fl">0.05</span>) {</span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>            .self <span class="sc">|&gt;</span> <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">pointColor =</span> <span class="st">&quot;blue&quot;</span>))</span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>        }</span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>        p</span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>    }</span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>)</span></code></pre></div>
-<p>Now we just have to make sure to set the <code>.self</code>
-parameter.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.700 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.700 UTC]: Step 1/4 data - skipping done step</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.700 UTC]: Step 2/4 fit - skipping done step</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.700 UTC]: Step 3/4 residual_shapiro_p_value</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.704 UTC]: Step 4/4 plot</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.743 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a></span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" aria-label="residual-plot2" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAArlBMVEUAAAAAADoAAGYAAP8AOpAAZrY6AAA6ADo6AGY6ZmY6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmtv9uTU1uTW5uTY5ubqtuq8huq+SOTU2OTW6OTY6OyP+QOgCQkGaQtpCQ2/+rbk2rbm6ryKur5P+2ZgC22/+2///Ijk3I///bkDrb/7bb///kq27k///r6+v/tmb/yI7/25D/27b/5Kv//7b//8j//9v//+T///9a9z6vAAAACXBIWXMAAA7DAAAOwwHHb6hkAAALLElEQVR4nO2dDX/TNhCHU0xgawpkhW0w2vHWjjYD0nZJi77/F5tly7FeTjpJll1bvv9+IUtlWfKT8+ntrCwYyanFY1dg7CJAiAgQIgKEiAAhIkCIugLa9pnc79mxwmsRIEQECBEBQkSAEBEgRAQIEQFCRIAQjRdQURQEyJFc8BcBsicRICSZAGHJ5IPwZAJEgAgQAUJEgBARIEQECBEB2v1+zdj9u9XLHz1UIgNAt6sX1+znpzP2/VUPlZg+oKuTL6UF3b+/ri3JWgofF0RUYvqA6lts98cPdv/XRXNiU4V4uVVSRI9Jma+TggDdvpQBAV9DIV6WZGY7yMuCrCcfqwUBpRyuQb/VZgII8UFFJf7JuJaZAPr56a2jFZMuwAkI8OR+TtrWAowHkLsf5A0ooI6CyRRaMUQqIKcPgnODak6ZByCDivR5a/5Jzw0pM0CaZIvamn9CcivHzwOQaOJCAOXlg3RpgApmWlBzx+Uw1EAElcIvvzWBgh2M6HCAeM0VEFOcCGA9BEjxsrD1BAEKbASTJAsNAAhICfRBwT4+RbJQX1Ou1mZIudgZA7Iny7fL7AFZh5leudvs+fmgWgXbuhEheMt0J+CpAmq/ePFfUG7pPJkCaj2GExAe/5M/oNqW4Gt0RJBhrsdVeLpkoX4tqCis11hYr18CnGlPurnw8t+t1QSqmw9Mzh9QIyeg2gcRILsFFdbk9tbLHJB0pWIE3zod7WPM2TMApI0VlNl9VjfjQWdPtCTglyw0AKDDBFBXQMkWlbyShfoH1E4AKRdY+6Cgs+cMyPBBXrknCigwjsQvNMbvVAPGwXQApNLCkx2N1XznpI1kmJKee9BmalSALHOCejOuH0WA1I+5A5JvEG3SngAxBvQDNR+EB1Dl7YOcgBhoRfNqxaCZRAIkd3SkyXpo4XC2gMwLb92NUonQIE77dK3fyvVIAYl56OAIKAOHfUKtKXBygKqmiomxqe0SLEvPkB2qgOQ7eFKA5El6VrT/wJVQVjNCAEnfg/3sRt3ik4WSdhTZgY3dSyiLiU5A2oyt3kiCZ7fWLTxZKDkgtUu4NXyLBRC8gibP2Kp3slE4UrfwZKF0gKRVwvZatqZlyKutbUdbP6pNb2dsgbN71i0mWSgZIK0ffZhChG8dvZukH6XFgCqpWQBq/gMsSD7YBkhKlzgbx04JkBqmID5VgCDfYg7VLJGeNgtUC0fqFpcslAhQoV2i8BrMEr9iAgLTi61uPWDh/SQLJQOkrFs0TgYbLFjrKLJvQdetF95PslAqQIXcV0nlJTICJPV+EgLCVu8nBEiMT1NbUHCEmZJjRICKZjTQ+iCvSrhnQ8JjFNUmb1yA4K8brAQc/wONVkOjiMcNyLcS0sEYoNAo4kcDhO7+YvumOwFyBclazv5IPijt7i8WQBBkq2VGF+6fLOQFCN/9JagS3jGI3Z5kGBCQunfHohQPEJHfeWAK9HfgvQDz4/kGfg8ClGb3F2YeiuTu10R6syCglFBAajdpOoD269P9evHkq34Q6oPCALVt09QAXS7Z5snXzVI/yL37C5dHM6+uvyojEasrHhmg0oAezpfsBjAhr13wgOuUZsTYwUy8h2ojBLRfH0OAvEpR75SaFgjIe6g2NkAP58c3Rx/5jeYvGyDxAQbkXceRAWJ3zxZLdvn0m1dOoxQ3INDRJAJk8WEjGqzWUkLwmA4Iyx2RfpjvhVvB0QACv0DdB1lzd0gfFFDZAWoU6KRdI8qMAEUqCaCu/aCR+6DOgKbTky5bsYhbrMPDGBqg0KeBHqEf9HBe9hVPvXKmqIQKyLSkkQHiaC7LnnRIRyhJHZu1EDYBQBtwLBZeCra2DOUePSA+yCjpbBJYUHOtYXUcuw/iTohdLsrhmL+SAgpNH82MYngpBMhSShvLHOGDgtOHd9JRQw1JhpvNC1Ct/W/xPmgWgLr0g2YCKPoWM6PBswQUNKWoTJgxY9CZFyDhpKP7QS5Afs/NB6ZPrZl3ACp6nZPuJVkoaT/I/kihJRaqH0BpHgYSSjDl6pM8JKCDIae3oA1Hg84HRW2mUm3cMszeLWm2m4EACTSdpzukO23r3jVyYhbUCZD0eCBrffXWHUQ3JR/EJW6xY6+cailgbMIjAUqTLKS2YjfcR4dMSc8NULhMQMp4Y+ta8kgEqKfoIqF0TxxqT5QOtvTc16qakNQPOu0+H8QO9R0ueGEoQJEiQIjMUtoYxIHCXwb0QbYo15hSBgx/6SdZyCvKNaKUTCftbVGuwaXkuezTMcpVVp6AOka5ymoB9d9R7ClZKGGUq6LGB9FQA0kmQNL/Q48iZAZoU47lg6Jf5FIgFpn5oMun/9Ytvb8UQPZJezx3TPqjNPOn8Q+zFKzZ460AkmPqmBegZnsTZcKsWx1HBoht+C0WN+XKpQ7kfSoxNUD1lGsIH7UUZSDvU4nJAQoXVIq0VU7w9i1B6cMPNYLm6yupG3NpSz9df2JubIDCYuwrKXtEGSsbuQFiYX1ErhaQumFdnoAiJu0PgHTvnKUPAlVtKGB/LFxZ7cm9Jw3pdvXiGt0eB94P0qMS0wd0dfKltCBkawqL9UiVCNl/KSB9BIDqW0zd3CQ8ICfhD0QNpiBAlu1xuF0cLAjOXZdjPWDSFnS1WnG3Y1pQo+qyGx/krIQS2RBSx1EDEtpZfVALCK2EuVe2Xx2nAgjeHscCyLURXa6ALP2gxgepf2QygxkAQhQGKEcfhCgQEJY7LH2SgJJuhpkloITJBIgAESAChGgKgOK2FxKaASDbUJkAESACRD7oMc8+O0CJdx8SSrELnmPxa0BApqsZCSBnFCIBIkCIxgNoOj5I/kytGDBhxiSLIkAECBEBQgSUovug+L1w8wSkT9q7Wrk5AjKWfeYHyB02YoS6TDH2ZRv461AuWvofzIVD8kGqaOEwYSUIEAEiQIgIECIChIgAISJAiAgQIgKEiAAhIkCICBAiAoSIACEiQIgIECIChIgAISJAiAgQIgKEiAAhIkCICBCiuQPavV6tzly7v8wcEN9uYffmAtv9JboSkwd0y6lcnSG7v8RXYvKAuEorQnZ/yVLegPi2FJbdXzy+hpwtqN795f7dW2bZ/SVBJSYNqNLuddmGYTtQxVdi8oBqPpbdXxJUYvKAvq+4zqgfFC8ChIgAISJAiAgQIgKEKC9AQMw7AZIEPVZCgCQRICSZAGHJ5INCCq9FgBARIEQECBEBQkSAEBEgRAQIUVdA2YsAISJAiAgQIgKEiAAhIkCICBAiAoQoGhC+bO/U7jX/ZbfY3J2yy781g5+gkwXdvvzhCF90iUcbfY/OXV7XWXR2+Tf3PE7QBRC/SkfokEtVSNb768jcTURXTHblN/c8TtAFEGfvCD5zSVhQZO6m1Ljs0i+meZygA6DqzI7wRXfm6uaPz13eGicXcdml39zzOEEHQPzssRa0e3PBbl9cx1oQd9J/fh67BV29Zc7wRZfEVxfrg1hdclz23UA+6OdnTt4RvuiSsKDI3LULexVZuPSbex4niAckTDOyJ3O7Wp1cxPeDyux+3RhAA/aD5iAChIgAISJAiAgQIgKEaKSANoujD88/sv/+YdVL1s2Tr0PWZJyA9utT/nZXMuIvRQSIsYYKAbLo7tlisbx7/qF8+7V8HbOH88WCc9mvF0d/E6CD6TQW9HC+LN3S02/79XHJiAAZgG5q6zmt3jcEyAC0WVQ6Lo2oTPuFABmAOBjGGAFqpN9iR3VLVt1i1IqxAyDeHeKvh/PSdEpK+/WSnHSlxnQuF8vqxZt5bkXUzI9PBAgRAUJEgBARIEQECBEBQkSAEBEgRAQI0f8IOAXfb3l9lwAAAABJRU5ErkJggg==" alt="residual-plot2" /></p>
-<p>This simple “trick” opens up a wide range of possibilities for
-pipeline modifications at runtime. As we will show in the next section,
-this is not limited to changing parameters but can also be used to
-modify the very own pipeline structure.</p>
-</div>
-<div id="changing-pipeline-structure-at-runtime" class="section level3">
-<h3>Changing pipeline structure at runtime</h3>
-<p>Subsequently, the pipeline steps will be comprised only of very basic
-functions in order to keep matters simple. The focus here is on the
-pipeline structure and how it can be modified at runtime.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, <span class="cf">function</span>(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f2&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span></code></pre></div>
+<div id="changing-the-pipeline-structure-at-runtime" class="section level3">
+<h3>Changing the pipeline structure at runtime</h3>
+<p>After this little excursion let’s next see how to safely modify our
+pipeline structure at runtime.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, \(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f2&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>(<span class="fu">pip_run</span>(pip))</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.335 UTC]: Starting run of pipeflow &#39;my-pipeline&#39;</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.335 UTC]: Step 1/4 init</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.336 UTC]: Step 2/4 f1</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.337 UTC]: Step 3/4 f2</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.338 UTC]: Step 4/4 f3</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.339 UTC]: Finished run of pipeflow &#39;my-pipeline&#39;</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pipeline (4 steps)</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co">#    step params depends state out</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># 1: init  xInit          done   0</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done   1</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># 3:   f2      x      f1  done   3</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co"># 4:   f3      x      f2  done   6</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
 <p>This pipeline just adds 1, 2, and 3 to the initial value,
-respectively.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.950 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.950 UTC]: Step 1/4 init</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.951 UTC]: Step 2/4 f1</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.952 UTC]: Step 3/4 f2</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.953 UTC]: Step 4/4 f3</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:12.955 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>pip</span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (4 steps)</span></span>
-<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#    step depends out state</span></span>
-<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co"># 1: init           0  done</span></span>
-<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co"># 2:   f1    init   1  done</span></span>
-<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co"># 3:   f2      f1   3  done</span></span>
-<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a><span class="co"># 4:   f3      f2   6  done</span></span></code></pre></div>
-<p>The <code>out</code> column in the table shows the output of each
-step. Now let’s modify step <code>f2</code> that in turn will modify
+respectively. Let’s modify step <code>f2</code> that in turn will modify
 <code>f3</code> at runtime based on the interim result passed into
 <code>f2</code>.</p>
 <div id="modify-steps" class="section level4">
 <h4>Modify steps</h4>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    <span class="st">&quot;f2&quot;</span>,</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>        <span class="at">x =</span> <span class="sc">~</span>f1,</span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>        <span class="at">.self =</span> <span class="cn">NULL</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>    ) {</span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>        <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>            .self <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(<span class="st">&quot;f3&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">*</span> <span class="dv">3</span>)</span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>            <span class="fu">return</span>(x <span class="sc">/</span> <span class="dv">2</span>)</span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>        }</span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>        x <span class="sc">+</span> <span class="dv">2</span></span>
-<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>    }</span>
-<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>    <span class="st">&quot;f2&quot;</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    \(<span class="at">x =</span> <span class="sc">~</span>f1) {</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>        <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>            .self<span class="sc">$</span><span class="fu">replace</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">*</span> <span class="dv">3</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>            <span class="fu">return</span>(x <span class="sc">/</span> <span class="dv">2</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>        }</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>        x <span class="sc">+</span> <span class="dv">2</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>    }</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>)</span></code></pre></div>
 <p>Basically, step <code>f2</code> now checks if the input is greater
 than 10, and if so, it replaces step <code>f3</code> with a new step now
 referencing <code>f1</code> that multiplies the input passed from
 <code>f1</code> by 3 and returns half of the input.</p>
 <p>To see this, let’s try it with an input of 15.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">15</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.032 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.033 UTC]: Step 1/4 init</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.034 UTC]: Step 2/4 f1</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.036 UTC]: Step 3/4 f2</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.040 UTC]: Step 4/4 f3</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.041 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>pip</span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (4 steps)</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#    step depends out state</span></span>
-<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co"># 1: init          15  done</span></span>
-<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co"># 2:   f1    init  16  done</span></span>
-<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co"># 3:   f2      f1   8  done</span></span>
-<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co"># 4:   f3      f1  48  done</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">15</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.369 UTC]: Starting run of pipeflow &#39;my-pipeline&#39;</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.369 UTC]: Step 1/4 init</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.369 UTC]: Step 2/4 f1</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.370 UTC]: Step 3/4 f2</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.371 UTC]: Step 4/4 f3</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.372 UTC]: Finished run of pipeflow &#39;my-pipeline&#39;</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>pip</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pipeline (4 steps)</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a><span class="co">#    step params depends state out</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="co"># 1: init  xInit          done  15</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done  16</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="co"># 3:   f2      x      f1  done   8</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co"># 4:   f3      x      f1  done  48</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
 <p>We see that both the output of the pipeline and the dependencies of
 the last step have changed. Let’s confirm by inspecting the function of
 the last step.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip[[<span class="st">&quot;f3&quot;</span>, <span class="st">&quot;fun&quot;</span>]]</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># function (x = ~f1) </span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># x * 3</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># &lt;environment: 0x0000028e4811e6c0&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip[[<span class="st">&quot;f3&quot;</span>, <span class="st">&quot;fun&quot;</span>]]</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># function (x = ~f1) </span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># x * 3</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># &lt;environment: 0x5606dbfc7778&gt;</span></span></code></pre></div>
 </div>
 <div id="insert-and-remove-steps" class="section level4">
 <h4>Insert and remove steps</h4>
-<p>For our last example, we get even more hacky an dinstead of just
-replacing, we will go a bit further to insert and remove steps. The
-pipeline definition is as follows:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, <span class="cf">function</span>(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>        <span class="st">&quot;f2&quot;</span>,</span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>            <span class="at">x =</span> <span class="sc">~</span>f1,</span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>            <span class="at">.self =</span> <span class="cn">NULL</span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>        ) {</span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>            <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>                .self <span class="sc">|&gt;</span></span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>                    <span class="fu">pip_add</span>(</span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>                        <span class="st">&quot;f2a&quot;</span>,</span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">21</span>,</span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>                        <span class="at">after =</span> <span class="st">&quot;f1&quot;</span>,</span>
-<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>                    <span class="fu">pip_add</span>(</span>
-<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a>                        <span class="st">&quot;f2b&quot;</span>,</span>
-<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2a) x <span class="sc">+</span> <span class="dv">22</span>,</span>
-<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a>                        <span class="at">after =</span> <span class="st">&quot;f2a&quot;</span></span>
-<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a>                    <span class="fu">pip_replace</span>(</span>
-<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a>                        <span class="st">&quot;f3&quot;</span>,</span>
-<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2b) {</span>
-<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a>                            x <span class="sc">+</span> <span class="dv">30</span></span>
-<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a>                        }</span>
-<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb15-28"><a href="#cb15-28" tabindex="-1"></a>                    <span class="fu">pip_remove</span>(<span class="st">&quot;f2&quot;</span>)</span>
-<span id="cb15-29"><a href="#cb15-29" tabindex="-1"></a>            }</span>
-<span id="cb15-30"><a href="#cb15-30" tabindex="-1"></a>            x <span class="sc">+</span> <span class="dv">2</span></span>
-<span id="cb15-31"><a href="#cb15-31" tabindex="-1"></a>        }</span>
-<span id="cb15-32"><a href="#cb15-32" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb15-33"><a href="#cb15-33" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span></code></pre></div>
-<p>Basically, if the input is greater than 10, we insert two new steps
+<p>Next, we get even more hacky and instead of just replacing, we will
+go a bit further to insert and remove steps. The pipeline definition is
+as follows:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;hicky-hacky&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, \(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>        <span class="st">&quot;f2&quot;</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>        \(<span class="at">x =</span> <span class="sc">~</span>f1) {</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>            <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>                .self <span class="sc">|&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>                    <span class="fu">pip_add</span>(<span class="st">&quot;f2a&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">21</span>, <span class="at">after =</span> <span class="st">&quot;f1&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>                    <span class="fu">pip_add</span>(<span class="st">&quot;f2b&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2a) x <span class="sc">+</span> <span class="dv">22</span>, <span class="at">after =</span> <span class="st">&quot;f2a&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>                    <span class="fu">pip_replace</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2b) x <span class="sc">+</span> <span class="dv">30</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>                    <span class="fu">pip_remove</span>(<span class="st">&quot;f2&quot;</span>)</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>            }</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>            x <span class="sc">+</span> <span class="dv">2</span></span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>        }</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span></code></pre></div>
+<p>If the input is greater than 10, we insert two new steps
 <code>f2a</code> and <code>f2b</code> after <code>f1</code>, remove
 <code>f2</code>, and replace <code>f3</code> with a new step that adds
 30 to the input. Let’s first run with the initial value of 0 to see the
 original output.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.158 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.158 UTC]: Step 1/4 init</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.159 UTC]: Step 2/4 f1</span></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.160 UTC]: Step 3/4 f2</span></span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.162 UTC]: Step 4/4 f3</span></span>
-<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.164 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a></span>
-<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>pip</span>
-<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (4 steps)</span></span>
-<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a><span class="co">#    step depends out state</span></span>
-<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="co"># 1: init           0  done</span></span>
-<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a><span class="co"># 2:   f1    init   1  done</span></span>
-<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a><span class="co"># 3:   f2      f1   3  done</span></span>
-<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co"># 4:   f3      f2   6  done</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.412 UTC]: Starting run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.412 UTC]: Step 1/4 init</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.413 UTC]: Step 2/4 f1</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.414 UTC]: Step 3/4 f2</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.415 UTC]: Step 4/4 f3</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.416 UTC]: Finished run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>pip</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; hicky-hacky (4 steps)</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#    step params depends state out</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># 1: init  xInit          done   0</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done   1</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co"># 3:   f2      x      f1  done   3</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co"># 4:   f3      x      f2  done   6</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
 <p>Next, we set the initial value to 11 to trigger the changes.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.202 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.203 UTC]: Step 1/4 init</span></span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.203 UTC]: Step 2/4 f1</span></span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.204 UTC]: Step 3/4 f2</span></span>
-<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.223 UTC]: Step 4/4 f3</span></span>
-<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.225 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a></span>
-<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a>pip</span>
-<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (5 steps)</span></span>
-<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="co">#    step depends    out state</span></span>
-<span id="cb17-15"><a href="#cb17-15" tabindex="-1"></a><span class="co"># 1: init             11  done</span></span>
-<span id="cb17-16"><a href="#cb17-16" tabindex="-1"></a><span class="co"># 2:   f1    init     12  done</span></span>
-<span id="cb17-17"><a href="#cb17-17" tabindex="-1"></a><span class="co"># 3:  f2a      f1 [NULL]   new</span></span>
-<span id="cb17-18"><a href="#cb17-18" tabindex="-1"></a><span class="co"># 4:  f2b     f2a         done</span></span>
-<span id="cb17-19"><a href="#cb17-19" tabindex="-1"></a><span class="co"># 5:   f3     f2b [NULL]   new</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.431 UTC]: Starting run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.431 UTC]: Step 1/4 init</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.431 UTC]: Step 2/4 f1</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.432 UTC]: Step 3/4 f2</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.436 UTC]: Step 4/4 f3</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.436 UTC]: Finished run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>pip</span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; hicky-hacky (5 steps)</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co">#    step params depends state    out</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co"># 1: init  xInit          done     11</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done     12</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co"># 3:  f2a      x      f1   new [NULL]</span></span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co"># 4:  f2b      x     f2a  done       </span></span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co"># 5:   f3      x     f2b   new [NULL]</span></span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
 <p>While the structure has changed as expected, some steps were not yet
 run. In fact, since originally step <code>f3</code>came after
 <code>f2</code>, and in contrast to what the log is showing, instead of
-step <code>f3</code>, actually the new step <code>f2b</code> was run,
-albeit with x = NULL as input.</p>
+step <code>f3</code>, actually the new step <code>f2b</code> was run<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> , albeit
+with x = NULL as input.</p>
 <p>So to have the true results, we need to re-init the parameter and
 need to re-run the pipeline.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.264 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.265 UTC]: Step 1/5 init</span></span>
-<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.265 UTC]: Step 2/5 f1</span></span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.266 UTC]: Step 3/5 f2a</span></span>
-<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.268 UTC]: Step 4/5 f2b</span></span>
-<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.269 UTC]: Step 5/5 f3</span></span>
-<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.270 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a></span>
-<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a>pip</span>
-<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (5 steps)</span></span>
-<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a><span class="co">#    step depends out state</span></span>
-<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a><span class="co"># 1: init          11  done</span></span>
-<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a><span class="co"># 2:   f1    init  12  done</span></span>
-<span id="cb18-18"><a href="#cb18-18" tabindex="-1"></a><span class="co"># 3:  f2a      f1  33  done</span></span>
-<span id="cb18-19"><a href="#cb18-19" tabindex="-1"></a><span class="co"># 4:  f2b     f2a  55  done</span></span>
-<span id="cb18-20"><a href="#cb18-20" tabindex="-1"></a><span class="co"># 5:   f3     f2b  85  done</span></span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.452 UTC]: Starting run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.452 UTC]: Step 1/5 init</span></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.453 UTC]: Step 2/5 f1</span></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.454 UTC]: Step 3/5 f2a</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.454 UTC]: Step 4/5 f2b</span></span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.455 UTC]: Step 5/5 f3</span></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.456 UTC]: Finished run of pipeflow &#39;hicky-hacky&#39;</span></span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>pip</span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; hicky-hacky (5 steps)</span></span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a><span class="co">#    step params depends state out</span></span>
+<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a><span class="co"># 1: init  xInit          done  11</span></span>
+<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done  12</span></span>
+<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a><span class="co"># 3:  f2a      x      f1  done  33</span></span>
+<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a><span class="co"># 4:  f2b      x     f2a  done  55</span></span>
+<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a><span class="co"># 5:   f3      x     f2b  done  85</span></span>
+<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
 <p>Now the output of all steps is as expected. If we want to use
 {pipeflow} in production, obviously, having to re-run the pipeline and
-temporarily showing a wrong log is not ideal. Luckily, {pipeflow}
-provides a built-in solution for this.</p>
-<p>First, we have to make sure that any step modifying the pipeline
-structure returns the modified pipeline object itself, so let’s redefine
-the pipeline as follows:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pipeline&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, <span class="cf">function</span>(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
-<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
-<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>        <span class="st">&quot;f2&quot;</span>,</span>
-<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>            <span class="at">x =</span> <span class="sc">~</span>f1,</span>
-<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>            <span class="at">.self =</span> <span class="cn">NULL</span></span>
-<span id="cb19-9"><a href="#cb19-9" tabindex="-1"></a>        ) {</span>
-<span id="cb19-10"><a href="#cb19-10" tabindex="-1"></a>            <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
-<span id="cb19-11"><a href="#cb19-11" tabindex="-1"></a>                .self <span class="sc">|&gt;</span></span>
-<span id="cb19-12"><a href="#cb19-12" tabindex="-1"></a>                    <span class="fu">pip_add</span>(</span>
-<span id="cb19-13"><a href="#cb19-13" tabindex="-1"></a>                        <span class="st">&quot;f2a&quot;</span>,</span>
-<span id="cb19-14"><a href="#cb19-14" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">21</span>,</span>
-<span id="cb19-15"><a href="#cb19-15" tabindex="-1"></a>                        <span class="at">after =</span> <span class="st">&quot;f1&quot;</span>,</span>
-<span id="cb19-16"><a href="#cb19-16" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb19-17"><a href="#cb19-17" tabindex="-1"></a>                    <span class="fu">pip_add</span>(</span>
-<span id="cb19-18"><a href="#cb19-18" tabindex="-1"></a>                        <span class="st">&quot;f2b&quot;</span>,</span>
-<span id="cb19-19"><a href="#cb19-19" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2a) x <span class="sc">+</span> <span class="dv">22</span>,</span>
-<span id="cb19-20"><a href="#cb19-20" tabindex="-1"></a>                        <span class="at">after =</span> <span class="st">&quot;f2a&quot;</span></span>
-<span id="cb19-21"><a href="#cb19-21" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb19-22"><a href="#cb19-22" tabindex="-1"></a>                    <span class="fu">pip_replace</span>(</span>
-<span id="cb19-23"><a href="#cb19-23" tabindex="-1"></a>                        <span class="st">&quot;f3&quot;</span>,</span>
-<span id="cb19-24"><a href="#cb19-24" tabindex="-1"></a>                        <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2b) {</span>
-<span id="cb19-25"><a href="#cb19-25" tabindex="-1"></a>                            x <span class="sc">+</span> <span class="dv">30</span></span>
-<span id="cb19-26"><a href="#cb19-26" tabindex="-1"></a>                        }</span>
-<span id="cb19-27"><a href="#cb19-27" tabindex="-1"></a>                    ) <span class="sc">|&gt;</span></span>
-<span id="cb19-28"><a href="#cb19-28" tabindex="-1"></a>                    <span class="fu">pip_remove</span>(<span class="st">&quot;f2&quot;</span>)</span>
-<span id="cb19-29"><a href="#cb19-29" tabindex="-1"></a>                <span class="fu">return</span>(.self) <span class="co"># &lt;-- return modified pipeline</span></span>
-<span id="cb19-30"><a href="#cb19-30" tabindex="-1"></a>            }</span>
-<span id="cb19-31"><a href="#cb19-31" tabindex="-1"></a>            x <span class="sc">+</span> <span class="dv">2</span></span>
-<span id="cb19-32"><a href="#cb19-32" tabindex="-1"></a>        }</span>
-<span id="cb19-33"><a href="#cb19-33" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb19-34"><a href="#cb19-34" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, <span class="cf">function</span>(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span></code></pre></div>
-<p>Then let’s run the pipeline again while also setting the
-<code>recursive</code> argument to <code>TRUE</code> and have a closer
-look at the log.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>    <span class="fu">pip_run</span>(<span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.348 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.348 UTC]: Step 1/4 init</span></span>
-<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.349 UTC]: Step 2/4 f1</span></span>
-<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.350 UTC]: Step 3/4 f2</span></span>
-<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.365 UTC]: Abort pipeline execution and restart on returned pipeline.</span></span>
-<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.365 UTC]: Start run of pipeflow_pip &#39;my-pipeline&#39;</span></span>
-<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.365 UTC]: Step 1/5 init</span></span>
-<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.365 UTC]: Step 2/5 f1</span></span>
-<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.367 UTC]: Step 3/5 f2a</span></span>
-<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.368 UTC]: Step 4/5 f2b</span></span>
-<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.370 UTC]: Step 5/5 f3</span></span>
-<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:13.371 UTC]: Finished run of pipeflow_pip &#39;my-pipeline&#39;</span></span></code></pre></div>
-<p>As you can see, the run is now automatically aborted right after the
-pipeline was modified and, since we have set
-<code>recursive = TRUE</code>, the pipeline is also restarted
-automatically based on the new structure. As a result, the log now is
-fully aligned with the performed pipeline run.</p>
+temporarily showing a wrong log is not ideal. That is, ideally, the
+pipeline run would be aborted once away after all changes were made in
+<code>f2</code> and then re-run right away from the beginning. Also,
+this process potentially should be repeated recursively until the
+structure does not change anymore.</p>
+</div>
+</div>
+<div id="invoke-restart-during-run" class="section level3">
+<h3>Invoke restart during run</h3>
+<p>Luckily, with some minimal changes, this behaviour can be achieved
+with {pipeflow}. First, for any step where you want to restart the
+pipeline run, you need to call <code>.self$restart()</code>, so we adapt
+the <code>f2</code> function as follows:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;hacky-with-restart&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;init&quot;</span>, \(<span class="at">xInit =</span> <span class="dv">0</span>) xInit) <span class="sc">|&gt;</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f1&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>init) x <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>        <span class="st">&quot;f2&quot;</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>        \(<span class="at">x =</span> <span class="sc">~</span>f1) {</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>            <span class="cf">if</span> (x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>                .self <span class="sc">|&gt;</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>                    <span class="fu">pip_add</span>(<span class="st">&quot;f2a&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f1) x <span class="sc">+</span> <span class="dv">21</span>, <span class="at">after =</span> <span class="st">&quot;f1&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>                    <span class="fu">pip_add</span>(<span class="st">&quot;f2b&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2a) x <span class="sc">+</span> <span class="dv">22</span>, <span class="at">after =</span> <span class="st">&quot;f2a&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>                    <span class="fu">pip_replace</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2b) x <span class="sc">+</span> <span class="dv">30</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>                    <span class="fu">pip_remove</span>(<span class="st">&quot;f2&quot;</span>)</span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>                .self<span class="sc">$</span><span class="fu">restart</span>() <span class="co"># &lt;-- restart the run</span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>            }</span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>            x <span class="sc">+</span> <span class="dv">2</span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>        }</span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;f3&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>f2) x <span class="sc">+</span> <span class="dv">3</span>)</span></code></pre></div>
+<p>Second, you just run the pipeline as usual.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(<span class="fu">list</span>(<span class="at">xInit =</span> <span class="dv">11</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.484 UTC]: Starting run of pipeflow &#39;hacky-with-restart&#39;</span></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.484 UTC]: Step 1/4 init</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.485 UTC]: Step 2/4 f1</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.486 UTC]: Step 3/4 f2</span></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.489 UTC]: Restarting pipeline execution.</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.489 UTC]: Restarting run of pipeflow &#39;hacky-with-restart&#39;</span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.489 UTC]: Step 1/5 init</span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.490 UTC]: Step 2/5 f1</span></span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.490 UTC]: Step 3/5 f2a</span></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.491 UTC]: Step 4/5 f2b</span></span>
+<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.492 UTC]: Step 5/5 f3</span></span>
+<span id="cb17-15"><a href="#cb17-15" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:17.493 UTC]: Finished run of pipeflow &#39;hacky-with-restart&#39;</span></span></code></pre></div>
+<p>As you can see, the run was aborted right after step <code>f2</code>
+and re-run from the start based on the new structure. As a result, the
+log now is fully aligned with the performed pipeline run.</p>
 <p>Looking at the final pipeline overview, we see that the output
 matches the expected output of the modified pipeline.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>pip</span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pipeline (5 steps)</span></span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co"># ------------------------------------</span></span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co">#    step depends out state</span></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co"># 1: init          11  done</span></span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="co"># 2:   f1    init  12  done</span></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co"># 3:  f2a      f1  33  done</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="co"># 4:  f2b     f2a  55  done</span></span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="co"># 5:   f3     f2b  85  done</span></span></code></pre></div>
-<p>In summary, this was just a silly example to show some possibilities
-and I leave it to the user to come up with more sensible and complex use
-cases.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>pip</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; hacky-with-restart (5 steps)</span></span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="co"># ---------------------------------------</span></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co">#    step params depends state out</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co"># 1: init  xInit          done  11</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co"># 2:   f1      x    init  done  12</span></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co"># 3:  f2a      x      f1  done  33</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co"># 4:  f2b      x     f2a  done  55</span></span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co"># 5:   f3      x     f2b  done  85</span></span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="co"># ---------------------------------------</span></span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:17</span></span></code></pre></div>
+<p>Of course, this was just a toy example to show some possibilities,
+but I have made use of this feature already in various projects and may
+present one of them in a more sophisticated example in the future.</p>
 <p>Lastly note that since you have full access to the pipeline object,
 of course, you can get even more hacky, but be aware that some
 additional operations are done under the hood when steps are added or
 removed. It is therefore not recommended to “manually” manipulate the
 internal data.table object in terms of removing or adding rows, or
 changing important columns such as <code>depends</code> or
-<code>.nodeId</code> as this immediately would invalidate the internal
+<code>nodeId</code> as this immediately would invalidate the internal
 consistency of the dependency graph.</p>
 <p>On the other hand, changing entries in columns such as
 <code>tags</code>, <code>time</code>, <code>state</code> or
 <code>output</code> is generally not critical. If in doubt, just try and
 see what works.</p>
 </div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p> By default, <code>ls()</code> hides names starting with
+a dot. The internal entries, which become visible via
+<code>ls(pip$pipenv, all.names = TRUE)</code>, are not considered in
+this vignette.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p> See the state of <code>f2b</code> in row 4: it is set
+to <code>done</code>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

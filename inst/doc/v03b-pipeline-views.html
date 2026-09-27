@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Pipeline views</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Pipeline views</h1>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#setup" id="toc-setup">Setup</a></li>
+<li><a href="#creating-views" id="toc-creating-views">Creating
+views</a></li>
+<li><a href="#selecting-steps-with" id="toc-selecting-steps-with">Selecting steps with
+<code>[</code></a></li>
+<li><a href="#composing-views" id="toc-composing-views">Composing
+views</a></li>
+<li><a href="#the-view-meta-field" id="toc-the-view-meta-field">The
+<code>view</code> meta field</a></li>
+<li><a href="#running-views" id="toc-running-views">Running
+views</a></li>
+</ul>
+</div>
+
+<p>Pipelines can get long, and often you want to focus on a subset of
+steps: a topic, a stage, or the steps that produce the outputs you care
+about. <em>Views</em> are {pipeflow}’s way of working on a subset of
+steps without copying anything. A view references the underlying
+pipeline, so every operation applied to a view (running it, updating
+parameters, tagging, locking, …) writes through to the original
+pipeline, restricted to the steps covered by the view.</p>
+<p>This vignette shows how to create and combine views, how to select
+steps with the <code>[</code> operator, and how to run only part of a
+pipeline.</p>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<p>Again, we use a very simplified example of a pipeline.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pip&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;load&quot;</span>, \(<span class="at">n =</span> <span class="dv">5</span>) <span class="fu">seq_len</span>(n), <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;io&quot;</span>, <span class="st">&quot;daily&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;clean&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>load) x <span class="sc">*</span> <span class="dv">2</span>, <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;io&quot;</span>, <span class="st">&quot;core&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;fit&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>clean) <span class="fu">sum</span>(x), <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;core&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;report&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>fit) <span class="fu">paste</span>(<span class="st">&quot;result:&quot;</span>, x), <span class="at">tags =</span> <span class="st">&quot;report&quot;</span>)</span></code></pre></div>
+<p>As you see above, besides <code>step</code> and <code>fun</code>,
+<code>pip_add()</code> also allows to set tags. We will use these tags
+as meta information to filter certain steps by topic and/or output type.
+Let’s do a first run before we move on.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>(<span class="fu">pip_run</span>(pip, <span class="at">lgr =</span> <span class="cn">NULL</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (4 steps)</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#      step params depends state            out       tags</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 1:   load      n          done      1,2,3,4,5   io,daily</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 2:  clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># 3:    fit      x   clean  done             30 model,core</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co"># 4: report      x     fit  done     result: 30     report</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+</div>
+<div id="creating-views" class="section level2">
+<h2>Creating views</h2>
+<p><code>pip_view()</code> returns a <em>view</em> of the pipeline that
+contains only the steps matching the given filters:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;core&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># 2:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>Filters can be combined. By default, steps must match <em>all</em>
+filters (logical AND), while the values within a single filter are
+treated as alternatives (OR):</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;core&quot;</span>, <span class="at">state =</span> <span class="st">&quot;done&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 2:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">step =</span> <span class="fu">c</span>(<span class="st">&quot;clean&quot;</span>, <span class="st">&quot;fit&quot;</span>))</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co"># 2:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p><code>join = &quot;union&quot;</code> keeps steps that match <em>any</em>
+filter:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;report&quot;</span>, <span class="at">step =</span> <span class="st">&quot;clean&quot;</span>, <span class="at">join =</span> <span class="st">&quot;union&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#      step params depends state            out    tags</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># 1:  clean      x    load  done  2, 4, 6, 8,10 io,core</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># 2: report      x     fit  done     result: 30  report</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>With <code>fixed = FALSE</code>, filter values are interpreted as
+regular expressions:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">step =</span> <span class="st">&quot;^f&quot;</span>, <span class="at">fixed =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (1 of 4 steps)</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#    step params depends state out       tags</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># 1:  fit      x   clean  done  30 model,core</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>The available filters are <code>step</code>, <code>params</code>,
+<code>state</code>, <code>exec</code>, <code>tags</code>, and
+<code>depends</code>. For example, to find all steps that depend on
+<code>load</code> and are still <code>new</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">pip_reset</span>(pip) <span class="co"># reset to initial state</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">depends =</span> <span class="st">&quot;load&quot;</span>, <span class="at">state =</span> <span class="st">&quot;new&quot;</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (1 of 4 steps)</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#     step params depends state    tags</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># 1: clean      x    load   new io,core</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+</div>
+<div id="selecting-steps-with" class="section level2">
+<h2>Selecting steps with <code>[</code></h2>
+<p>The extract operator <code>[</code> provides a data.table-like way of
+selecting steps. It returns a view by default:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip, <span class="at">lgr =</span> <span class="cn">NULL</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>pip[<span class="fu">c</span>(<span class="st">&quot;load&quot;</span>, <span class="st">&quot;fit&quot;</span>)]</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#    step params depends state       out       tags</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 1: load      n          done 1,2,3,4,5   io,daily</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 2:  fit      x   clean  done        30 model,core</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>pip[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (3 of 4 steps)</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># 1:  load      n          done      1,2,3,4,5   io,daily</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co"># 2: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># 3:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>Boolean filters are evaluated in the context of the step table, so
+the same columns as in <code>pip_view()</code> are available as
+variables:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip[tags <span class="sc">%like%</span> <span class="st">&quot;core&quot;</span>]</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># 2:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>pip[step <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;clean&quot;</span>, <span class="st">&quot;fit&quot;</span>) <span class="sc">&amp;</span> state <span class="sc">==</span> <span class="st">&quot;done&quot;</span>]</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#     step params depends state            out       tags</span></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="co"># 2:   fit      x   clean  done             30 model,core</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>Negative indices select all steps except the excluded ones:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip[<span class="sc">-</span><span class="dv">2</span>]</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (3 of 4 steps)</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co">#      step params depends state        out       tags</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># 1:   load      n          done  1,2,3,4,5   io,daily</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># 2:    fit      x   clean  done         30 model,core</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># 3: report      x     fit  done result: 30     report</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p><code>p[]</code> returns a copy of the pipeline, and using two
+indices (<code>p[i, j]</code>) extracts a the given rows and columns as
+a <code>data.table</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip2 <span class="ot">&lt;-</span> pip[]</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>pip[, <span class="fu">c</span>(<span class="st">&quot;step&quot;</span>, <span class="st">&quot;tags&quot;</span>)]</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co">#      step       tags</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#    &lt;char&gt;     &lt;list&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># 1:   load   io,daily</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># 2:  clean    io,core</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># 3:    fit model,core</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co"># 4: report     report</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>pip[<span class="fu">c</span>(<span class="st">&quot;load&quot;</span>, <span class="st">&quot;fit&quot;</span>), <span class="st">&quot;out&quot;</span>]</span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#          out</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co">#       &lt;list&gt;</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co"># 1: 1,2,3,4,5</span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co"># 2:        30</span></span></code></pre></div>
+<p>While <code>[</code> returns a view by default,
+<code>view = FALSE</code> builds a new, self-contained pipeline
+containing the selected steps together with all their upstream
+dependencies:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip[<span class="fu">c</span>(<span class="st">&quot;fit&quot;</span>, <span class="st">&quot;report&quot;</span>), view <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># pulled in 2 upstream dependencies</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (4 steps)</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co">#      step params depends state            out       tags</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># 1:   load      n          done      1,2,3,4,5   io,daily</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># 2:  clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># 3:    fit      x   clean  done             30 model,core</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co"># 4: report      x     fit  done     result: 30     report</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+<p>The printed message tells you how many steps were pulled in as
+upstream dependencies.</p>
+</div>
+<div id="composing-views" class="section level2">
+<h2>Composing views</h2>
+<p>Views can be nested: applying <code>pip_view()</code> (or
+<code>[</code>) to a view narrows the view further.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>v1 <span class="ot">&lt;-</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;io&quot;</span>) <span class="co"># load, clean</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>v1</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#     step params depends state            out     tags</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># 1:  load      n          done      1,2,3,4,5 io,daily</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># 2: clean      x    load  done  2, 4, 6, 8,10  io,core</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>v2 <span class="ot">&lt;-</span> v1 <span class="sc">|&gt;</span> <span class="fu">pip_view</span>(<span class="at">tags =</span> <span class="st">&quot;core&quot;</span>) <span class="co"># clean only</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>v2</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view view (1 of 4 steps)</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#     step params depends state            out    tags</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co"># 1: clean      x    load  done  2, 4, 6, 8,10 io,core</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+</div>
+<div id="the-view-meta-field" class="section level2">
+<h2>The <code>view</code> meta field</h2>
+<p>Under the hood, a view is defined by a vector of row indices covered
+by the view (<code>NULL</code> for a “no view”). This vector is stored
+in the <code>view</code> meta field of the pipeline object, so in
+principle you can also manipulate the view directly by assigning to the
+meta field<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>pip[[<span class="st">&quot;view&quot;</span>]] <span class="co"># NULL — not a view</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># NULL</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>w <span class="ot">&lt;-</span> pip</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>w[[<span class="st">&quot;view&quot;</span>]] <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;load&quot;</span>, <span class="st">&quot;clean&quot;</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>w</span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 4 steps)</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#     step params depends state            out     tags</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co"># 1:  load      n          done      1,2,3,4,5 io,daily</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co"># 2: clean      x    load  done  2, 4, 6, 8,10  io,core</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a>w[[<span class="st">&quot;view&quot;</span>]] <span class="ot">&lt;-</span> <span class="cn">NULL</span> <span class="co"># back to the full pipeline</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a>w</span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip view (4 steps)</span></span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#      step params depends state            out       tags</span></span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co"># 1:   load      n          done      1,2,3,4,5   io,daily</span></span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a><span class="co"># 2:  clean      x    load  done  2, 4, 6, 8,10    io,core</span></span>
+<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a><span class="co"># 3:    fit      x   clean  done             30 model,core</span></span>
+<span id="cb14-23"><a href="#cb14-23" tabindex="-1"></a><span class="co"># 4: report      x     fit  done     result: 30     report</span></span>
+<span id="cb14-24"><a href="#cb14-24" tabindex="-1"></a><span class="co"># --------------------------------</span></span>
+<span id="cb14-25"><a href="#cb14-25" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+</div>
+<div id="running-views" class="section level2">
+<h2>Running views</h2>
+<p>Running a view executes the covered steps together with any upstream
+dependencies that are not up to date. The run log marks steps that
+belong to the view as <code>[view]</code> and steps that were pulled in
+as dependencies as <code>[upstream]</code>:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">pip_reset</span>(pip)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="fu">pip_run</span>(<span class="fu">pip_view</span>(pip, <span class="at">step =</span> <span class="st">&quot;report&quot;</span>))</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.399 UTC]: Starting run of pipeflow &#39;my-pip view&#39;</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.399 UTC]: Step 1/4 [upstream] load</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.399 UTC]: Step 2/4 [upstream] clean</span></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.400 UTC]: Step 3/4 [upstream] fit</span></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.401 UTC]: Step 4/4 [view] report</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:15.402 UTC]: Finished run of pipeflow &#39;my-pip view&#39;</span></span></code></pre></div>
+<p>Afterwards, the original pipeline is up to date for the covered
+steps.</p>
+<p>Pipeline views are not only useful to inspect or run certain parts of
+the pipeline but also to filter and collect the final output of your
+analysis run. For more details on this see the next vignette <a href="v04-collect-output.html">Collect and group output</a>.</p>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p> Direct manipulation of the view usually is not needed
+and probably mostly useful for debugging.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

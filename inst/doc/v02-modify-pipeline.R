@@ -17,29 +17,26 @@ pip <- pip_new("my-pip") |>
         function(data = airquality[1:10, ]) data
     ) |>
     pip_add(
-        "data_prep",
-        function(x = ~data) {
-            replace(x, "Temp.Celsius", (x[, "Temp"] - 32) * 5 / 9)
+        "prep",
+        function(df = ~data) {
+            df[, "Temp.Celsius"] <- (df[, "Temp"] - 32) * 5 / 9
+            df
         }
     ) |>
     pip_add(
-        "model_fit",
-        function(
-            data = ~data_prep,
-            xVar = "Temp.Celsius"
-        ) {
+        "fit",
+        function(data = ~prep,
+                 xVar = "Temp.Celsius") {
             lm(paste("Ozone ~", xVar), data = data)
         }
     ) |>
     pip_add(
-        "model_plot",
-        function(
-            model = ~model_fit,
-            data = ~data_prep,
-            xVar = "Temp.Celsius",
-            xLab = "Temperature in degrees Celsius",
-            title = "Linear model fit"
-        ) {
+        "plot",
+        function(model = ~fit,
+                 data = ~prep,
+                 xVar = "Temp.Celsius",
+                 xLab = "Temperature in degrees Celsius",
+                 title = "Linear model fit") {
             require(ggplot2, quietly = TRUE)
             coeffs <- coefficients(model)
             ggplot(data) +
@@ -68,14 +65,12 @@ pip_get_params(pip)[["data"]] |> head(3)
 ## ----insert-step----------------------------------------------------------------------------------
 pip |> pip_add(
     "standardize",
-    function(
-        data = ~data_prep,
-        yVar = "Ozone"
-    ) {
+    function(data = ~prep,
+             yVar = "Ozone") {
         data[, yVar] <- scale(data[, yVar])
         data
     },
-    after = "data_prep"
+    after = "prep"
 )
 
 ## -------------------------------------------------------------------------------------------------
@@ -83,22 +78,21 @@ pip
 
 ## ----eval = FALSE, echo = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
 # library(visNetwork)
-# do.call(visNetwork, args = pip_get_graph(pip)) |>
+# do.call(visNetwork, args = pip_graph(pip)) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## ----echo = FALSE, eval = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
 # library(visNetwork)
-# do.call(visNetwork, args = c(pip_get_graph(pip), list(height = 300))) |>
+# do.call(visNetwork, args = c(pip_graph(pip), list(height = 300))) |>
 #     visHierarchicalLayout(direction = "LR", sortMethod = "directed")
 
 ## -------------------------------------------------------------------------------------------------
-pip[["model_fit", "fun"]]
+pip[["fit", "fun"]]
 
 ## ----replace-model-fit-step-----------------------------------------------------------------------
 pip |> pip_replace(
-    "model_fit",
-    function(
-        data = ~standardize, # <- changed data reference
+    "fit",
+    function(data = ~standardize, # <- changed data reference
         xVar = "Temp.Celsius",
         yVar = "Ozone" # <- new y-variable
     ) {
@@ -108,14 +102,12 @@ pip |> pip_replace(
 
 ## ----replace-model-plot-step----------------------------------------------------------------------
 pip |> pip_replace(
-    "model_plot",
-    function(
-        model = ~model_fit,
-        data = ~standardize, # <- changed data reference
-        xVar = "Temp.Celsius",
-        yVar = "Ozone", # <- new y-variable
-        title = "Linear model fit"
-    ) {
+    "plot",
+    function(model = ~fit,
+             data = ~standardize, # <- changed data reference
+             xVar = "Temp.Celsius",
+             yVar = "Ozone", # <- new y-variable
+             title = "Linear model fit") {
         coeffs <- coefficients(model)
         ggplot(data) +
             geom_point(aes(.data[[xVar]], .data[[yVar]])) +
@@ -128,7 +120,7 @@ pip |> pip_replace(
 pip
 
 ## ----echo = FALSE, eval = nzchar(Sys.getenv("IN_PKGDOWN"))----------------------------------------
-# do.call(visNetwork, args = c(pip_get_graph(pip), list(height = 100))) |>
+# do.call(visNetwork, args = c(pip_graph(pip), list(height = 100))) |>
 #     visHierarchicalLayout(direction = "LR")
 
 ## -------------------------------------------------------------------------------------------------
@@ -136,10 +128,10 @@ pip_set_params(pip, params = list(xVar = "Solar.R", yVar = "Wind"))
 pip_run(pip)
 
 ## -------------------------------------------------------------------------------------------------
-pip[["model_fit", "out"]] |> coefficients()
+pip[["fit", "out"]] |> coefficients()
 
 ## ----fig.alt = "model-plot", warning = FALSE, message = FALSE-------------------------------------
-pip[["model_plot", "out"]]
+pip[["plot", "out"]]
 
 ## -------------------------------------------------------------------------------------------------
 pip
@@ -148,7 +140,7 @@ pip
 try(pip_remove(pip, "standardize"))
 
 ## ----remove-steps-recursively---------------------------------------------------------------------
-pip_remove(pip, "standardize", recursive = TRUE)
+pip_remove(pip, "standardize", force = TRUE)
 
 ## -------------------------------------------------------------------------------------------------
 pip

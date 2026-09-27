@@ -1,3 +1,51 @@
+# pipeflow 0.4.0
+
+## New features
+
+- Pipeline functions can be called as methods on the pipeline object,
+  e.g. `p$add(...)`, `p$run(...)`, `p$set_params(...)`, ...
+- The extract and replace operators gained new capabilities:
+  - two-index extraction (`p[[step, "out"]]`),
+  - negative row indices in `p[...]` and `p[i, j] <- value`,
+  - boolean filters in `p[...]` (data.table-style expressions),
+  - cross-pipeline assignment to copy steps between pipelines,
+  - step removal via `p[[step]] <- NULL`,
+  - time stamps via `p[[step, "time"]] <- value`,
+  - setting or replacing views via `p[["view"]] <- ...`.
+- `pip_collect()` (formerly `pip_collect_out()`) supports grouping via a
+  `by` argument, `as.table = TRUE` to return a compact table, and a
+  `simplify` argument to control flattening of single-step groups.
+- `pip_data()` provides direct access to the underlying step table.
+- `pip_graph()` (formerly `pip_get_graph()`) returns visNetwork-compatible
+  graph data. The old function names remain available as deprecated aliases.
+- `pip_derived_cols()` returns the names of the read-only (derived) columns.
+- `pip_view()` gains a `join = "union"` argument to combine filters as a
+  logical OR.
+- `.self` is now automatically available inside every step function (and is
+  a protected parameter name), enabling pipelines to modify themselves at
+  runtime, including `.self$restart()` and `.self$halt()`.
+
+## Changes
+
+- The columns of the internal step table were reordered and `nodeId` is now
+  shown in the full print view (`cols = "all"`).
+- The dependencies on `lgr` and `jsonlite` were removed.
+
+## Bug fixes
+
+- `pip_rename()` no longer corrupts the parameters of single-step pipelines.
+- Running a view now resolves upstream dependencies correctly.
+
+## Documentation
+
+- New vignettes: "Working with pipeline views" and "Nested pipelines".
+- Help pages of related functions were consolidated (extract/replace
+  operators, `dim`/`length`, `lock`/`unlock`, `tag`/`untag`,
+  `set_params`/`get_params`).
+- `pip_run()` documents the runtime control flow (`restart()`, `halt()`), and
+  `pip_add()` gained an example for the `after` argument.
+
+
 
 # pipeflow 0.3.0
 

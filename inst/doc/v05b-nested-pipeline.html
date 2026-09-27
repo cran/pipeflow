@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Nested pipelines</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Nested pipelines</h1>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#inner-pipeline" id="toc-inner-pipeline">Inner
+pipeline</a></li>
+<li><a href="#outer-pipeline" id="toc-outer-pipeline">Outer
+pipeline</a></li>
+<li><a href="#run-nested-pipeline" id="toc-run-nested-pipeline">Run
+nested pipeline</a></li>
+<li><a href="#forward-inner-pipeline-parameters-programmatically" id="toc-forward-inner-pipeline-parameters-programmatically">Forward
+inner pipeline parameters programmatically</a></li>
+<li><a href="#built-in-exec-modes-vs.-nested-pipelines" id="toc-built-in-exec-modes-vs.-nested-pipelines">Built-in exec modes
+vs. nested pipelines</a></li>
+</ul>
+</div>
+
+<p>A pipeline step can contain another pipeline: instead of computing a
+result directly, the step builds an inner pipeline and returns it. This
+allows to reuse a standard analysis pipeline inside a larger
+workflow.</p>
+<div id="inner-pipeline" class="section level3">
+<h3>Inner pipeline</h3>
+<p>We start with the same pipeline as in the previous <a href="v05a-split-map-reduce.html">“Split, map, and reduce”</a> vignette,
+fitting a linear model and returning its coefficients. This will serve
+as our inner pipeline.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>inner <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;coefficients&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">data =</span> <span class="cn">NULL</span>) data) <span class="sc">|&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="st">&quot;fit&quot;</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>        \(<span class="at">data =</span> <span class="sc">~</span>data, <span class="at">xVar =</span> <span class="st">&quot;x&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;y&quot;</span>) {</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        }</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;coefs&quot;</span>, \(<span class="at">fit =</span> <span class="sc">~</span>fit) <span class="fu">coefficients</span>(fit))</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>inner</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; coefficients (3 steps)</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="co"># ---------------------------------</span></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="co">#     step         params depends state</span></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="co"># 1:  data           data           new</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co"># 2:   fit data,xVar,yVar    data   new</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="co"># 3: coefs            fit     fit   new</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="co"># ---------------------------------</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+</div>
+<div id="outer-pipeline" class="section level3">
+<h3>Outer pipeline</h3>
+<p>The outer pipeline splits the data into subsets and derives the model
+coefficients by running the inner pipeline for each split.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Helper to run inner pipeline</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>run_inner_pip <span class="ot">&lt;-</span> <span class="cf">function</span>(pip, name, data) {</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>    pip<span class="sc">$</span>name <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">&quot;coefs for *%s*&quot;</span>, name)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="co"># Set data subset for inner pipeline and run it</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(pip, <span class="fu">list</span>(<span class="at">data =</span> data)) <span class="sc">|&gt;</span> <span class="fu">pip_run</span>()</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>    pip[[<span class="st">&quot;coefs&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>}</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>outer <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;full analysis&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">data =</span> <span class="cn">NULL</span>) data) <span class="sc">|&gt;</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>        <span class="st">&quot;split_data&quot;</span>, \(<span class="at">data =</span> <span class="sc">~</span>data, <span class="at">byVar =</span> <span class="st">&quot;by&quot;</span>) {</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>            <span class="fu">split</span>(data, <span class="at">f =</span> data[[byVar]])</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>        }</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>        <span class="st">&quot;inner_run&quot;</span>,</span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>        \(<span class="at">dataList =</span> <span class="sc">~</span>split_data, <span class="at">xVar =</span> <span class="st">&quot;x&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;y&quot;</span>) {</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>            p <span class="ot">&lt;-</span> <span class="fu">pip_clone</span>(inner)</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>            <span class="co"># Forward parameters to inner</span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>            <span class="fu">pip_set_params</span>(p, <span class="fu">list</span>(<span class="at">xVar =</span> xVar, <span class="at">yVar =</span> yVar))</span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>            <span class="fu">Map</span>(</span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>                <span class="at">f =</span> run_inner_pip,</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>                <span class="at">name =</span> <span class="fu">names</span>(dataList),</span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>                <span class="at">data =</span> dataList,</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>                <span class="at">MoreArgs =</span> <span class="fu">list</span>(<span class="at">pip =</span> p)</span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>            )</span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a>        }</span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a>        <span class="st">&quot;combine&quot;</span>,</span>
+<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a>        \(<span class="at">coefs =</span> <span class="sc">~</span>inner_run) <span class="fu">as.data.frame</span>(<span class="fu">do.call</span>(rbind, coefs))</span>
+<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a>    )</span>
+<span id="cb2-38"><a href="#cb2-38" tabindex="-1"></a></span>
+<span id="cb2-39"><a href="#cb2-39" tabindex="-1"></a>outer</span>
+<span id="cb2-40"><a href="#cb2-40" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
+<span id="cb2-41"><a href="#cb2-41" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb2-42"><a href="#cb2-42" tabindex="-1"></a><span class="co">#          step             params    depends state</span></span>
+<span id="cb2-43"><a href="#cb2-43" tabindex="-1"></a><span class="co"># 1:       data               data              new</span></span>
+<span id="cb2-44"><a href="#cb2-44" tabindex="-1"></a><span class="co"># 2: split_data         data,byVar       data   new</span></span>
+<span id="cb2-45"><a href="#cb2-45" tabindex="-1"></a><span class="co"># 3:  inner_run dataList,xVar,yVar split_data   new</span></span>
+<span id="cb2-46"><a href="#cb2-46" tabindex="-1"></a><span class="co"># 4:    combine              coefs  inner_run   new</span></span>
+<span id="cb2-47"><a href="#cb2-47" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb2-48"><a href="#cb2-48" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
+<p>Note the <code>inner_run</code> step: its parameters
+<code>xVar</code> and <code>yVar</code> are forwarded to the inner
+pipeline.</p>
+</div>
+<div id="run-nested-pipeline" class="section level3">
+<h3>Run nested pipeline</h3>
+<p>Let’s now set the analysis parameters and run the full pipeline:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>outer <span class="sc">|&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>        <span class="fu">list</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>            <span class="at">data =</span> iris,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Sepal.Length&quot;</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Sepal.Width&quot;</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>            <span class="at">byVar =</span> <span class="st">&quot;Species&quot;</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        )</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.780 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.780 UTC]: Step 1/4 data</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.781 UTC]: Step 2/4 split_data</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.782 UTC]: Step 3/4 inner_run</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.785 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.785 UTC]: Step 1/3 data</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.786 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.787 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.788 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Step 1/3 data</span></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.793 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.794 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Step 1/3 data</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.797 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.798 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.799 UTC]: Step 4/4 combine</span></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.800 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
+<p>The output of the <code>inner_run</code> step is a list of
+coefficient vectors, one for each species,</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>outer[[<span class="st">&quot;inner_run&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># $setosa</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#   -0.5694327    0.7985283 </span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># $versicolor</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co">#    0.8721460    0.3197193 </span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># $virginica</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co">#  (Intercept) Sepal.Length </span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co">#    1.4463054    0.2318905</span></span></code></pre></div>
+<p>and the <code>combine</code> step returns the expected combined
+table.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>outer[[<span class="st">&quot;combine&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co">#            (Intercept) Sepal.Length</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># setosa      -0.5694327    0.7985283</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># versicolor   0.8721460    0.3197193</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># virginica    1.4463054    0.2318905</span></span></code></pre></div>
+<p>Now suppose we want to change one of the model settings, say use
+<code>Petal.Length</code> instead of <code>Sepal.Length</code> as the
+predictor.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(outer, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Petal.Length&quot;</span>))</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>outer</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#          step             params    depends    state                 out</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># 1:       data               data                done &lt;data.frame[150x5]&gt;</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># 2: split_data         data,byVar       data     done           &lt;list[3]&gt;</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 3:  inner_run dataList,xVar,yVar split_data outdated           &lt;list[3]&gt;</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 4:    combine              coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<p>Since the <code>xVar</code> parameter is part of the
+<code>inner_run</code> step’s function arguments, the
+<code>inner_run</code> step’s state (and its downstream dependencies)
+correctly has now been marked as “outdated”.</p>
+</div>
+<div id="forward-inner-pipeline-parameters-programmatically" class="section level3">
+<h3>Forward inner pipeline parameters programmatically</h3>
+<p>While forwarding the parameters <em>manually</em> to the inner
+pipeline is straight-forward in our toy example, trying to
+<em>manually</em> synchronize real-world parameter sets between the
+outer and inner pipeline quickly becomes a unfeasible and a source for
+bugs that are hard to detect.</p>
+<p>For this reason, in practice, the following pattern should be used,
+which basically just forwards the combined set of <em>all</em> existing
+parameters. To do this, we replace the <code>inner_run</code> step as
+follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>outer <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;inner_run&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    \(<span class="at">dataList =</span> <span class="sc">~</span>split_data, ...) {</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        p <span class="ot">&lt;-</span> <span class="fu">pip_clone</span>(inner)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="co"># Forward all parameters (from outer and inner)</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>        all_params <span class="ot">&lt;-</span> .self<span class="sc">$</span><span class="fu">get_params</span>()</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="fu">pip_set_params</span>(p, all_params)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>        <span class="fu">Map</span>(</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>            <span class="at">f =</span> run_inner_pip,</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>            <span class="at">name =</span> <span class="fu">names</span>(dataList),</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>            <span class="at">data =</span> dataList,</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>            <span class="at">MoreArgs =</span> <span class="fu">list</span>(<span class="at">pip =</span> p)</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>        )</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>    },</span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>    <span class="at">params =</span> <span class="fu">pip_get_params</span>(inner) <span class="co"># &lt;--- default parameters of inner pipeline</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>)</span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a>outer</span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#          step                  params    depends    state                 out</span></span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co"># 1:       data                    data                done &lt;data.frame[150x5]&gt;</span></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co"># 2: split_data              data,byVar       data     done           &lt;list[3]&gt;</span></span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="co"># 3:  inner_run data,xVar,yVar,dataList split_data      new              [NULL]</span></span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="co"># 4:    combine                   coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
+<span id="cb7-28"><a href="#cb7-28" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<p>In this version, the <code>inner_run</code> step no longer declares
+<code>xVar</code> and <code>yVar</code> as its own arguments. Instead,
+its parameters are seeded with the inner pipeline’s parameters via
+<code>params = pip_get_params(inner)</code>, and the step forwards the
+combined parameter set at run time. Three aspects are worth spelling
+out:</p>
+<ul>
+<li><strong><code>.self</code></strong> refers to the pipeline that is
+currently being run and is available inside <em>every</em> step function
+without having to declare it. It exposes the usual pipeline interface,
+so <code>.self$get_params()</code> returns the current unbound
+parameters of the outer pipeline, and things like
+<code>.self$name</code> or <code>.self$run()</code> work as expected.
+For more examples on this mechanism see the <a href="v06-self-modify-pipeline.html">self-modifying pipelines</a>
+vignette.</li>
+<li><strong><code>params = pip_get_params(inner)</code></strong>
+registers the inner pipeline’s unbound parameters (<code>data</code>,
+<code>xVar</code>, <code>yVar</code>) as parameters of the
+<code>inner_run</code> step. They therefore show up in the step’s
+<code>params</code> column, become part of the outer pipeline’s
+parameter set (and can be updated with
+<code>pip_set_params(outer, ...)</code>), and are passed to the step
+function when it runs.</li>
+<li><strong>Precedence over function arguments</strong>: when
+<code>params</code> overlaps with the arguments of the step function,
+the function’s default values take precedence. This is why the
+replacement function above declares only <code>dataList</code> and
+<code>...</code> — had it declared e.g. <code>xVar = &quot;x&quot;</code>, that
+default would win over the value coming from <code>params</code>, and
+the forwarding would silently be ignored. As another example,
+<code>pip_add(&quot;s&quot;, \(x = 99, ...) x, params = list(x = 1))</code> stores
+<code>x = 99</code>, not <code>x = 1</code>.</li>
+</ul>
+<p>Let’s re-run the full pipeline.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>outer <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="fu">pip_set_params</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>        <span class="fu">list</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>            <span class="at">data =</span> iris,</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Sepal.Length&quot;</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Sepal.Width&quot;</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>            <span class="at">byVar =</span> <span class="st">&quot;Species&quot;</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        )</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Step 1/4 data</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Step 2/4 split_data</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.870 UTC]: Step 3/4 inner_run</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># warn [2026-09-27 18:21:16.872 UTC]: Trying to set parameters not defined in the target: byVar</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co"># Warning in pip_set_params(p, all_params): Trying to set parameters not defined in the target: byVar</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.874 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.874 UTC]: Step 1/3 data</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.875 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.876 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.877 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.878 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.878 UTC]: Step 1/3 data</span></span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.879 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.880 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.881 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.882 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.882 UTC]: Step 1/3 data</span></span>
+<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.883 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.884 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.885 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.885 UTC]: Step 4/4 combine</span></span>
+<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.886 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
+<p>Note that the warning in the log above is expected and harmless.
+Basically, <code>.self$get_params()</code> returns the outer pipeline’s
+<em>entire</em> parameter set, which includes <code>byVar</code> (from
+the <code>split_data</code> step) while the inner pipeline only defines
+<code>data</code>, <code>xVar</code>, and <code>yVar</code>. Since
+<code>pip_set_params()</code> reports any parameters that are not
+defined in the target and simply leaves them unset, the inner pipeline
+still receives all parameters it knows and the result is unaffected.</p>
+<p>If you need to omit the warning (e.g. in production code), just
+suppress it:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">suppressWarnings</span>(<span class="fu">pip_set_params</span>(p, all_params))</span></code></pre></div>
+<p>Alternatively, you could first restrict the forwarded parameters to
+those the inner pipeline actually knows. That has the same effect but
+adds code, and since forwarding the full parameter set is the whole
+point of this pattern, there is no need for it.</p>
+<p>Again, changing one of the inner parameters will correctly outdate
+the <code>inner_run</code> step plus downstream dependencies.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(outer, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Petal.Length&quot;</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>outer</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#          step                  params    depends    state                 out</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># 1:       data                    data                done &lt;data.frame[150x5]&gt;</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># 2: split_data              data,byVar       data     done           &lt;list[3]&gt;</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># 3:  inner_run data,xVar,yVar,dataList split_data outdated           &lt;list[3]&gt;</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># 4:    combine                   coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<p>With the above pattern, you can now change both the inner and outer
+pipeline, adding and/or removing any steps or parameters, without having
+to worry about parameter synchronization.</p>
+</div>
+<div id="built-in-exec-modes-vs.-nested-pipelines" class="section level3">
+<h3>Built-in exec modes vs. nested pipelines</h3>
+<p>Both this and the <a href="v05a-split-map-reduce.html">previous
+vignette</a> solve the same “split, apply, and combine” problem. The
+built-in execution modes
+(<code>exec = &quot;split&quot;</code>/<code>&quot;reduce&quot;</code>) are the recommended
+default whenever they fit while nested pipelines can be considered the
+more general tool. As a rule of thumb:</p>
+<ul>
+<li><strong>Code</strong>: the built-in modes are declarative and need
+no extra code, while the nested pattern requires cloning, mapping, and
+forwarding parameters.</li>
+<li><strong>Map shape</strong>: the built-in modes handle a single split
+point in the pipeline, while nested pipelines can map over arbitrary
+inputs (e.g. cross-validation folds, several data sets, or per-group
+settings) and multiple levels (nested splits).</li>
+<li><strong>Reuse</strong>: with nested pipelines the inner pipeline is
+a standalone, reusable artifact, whereas with the built-in modes the
+steps live in a single pipeline.</li>
+<li><strong>Run log and state</strong>: the built-in modes produce one
+unified run over all partitions, while nested pipelines are run
+separately.</li>
+<li><strong>Parallelism</strong>: the built-in modes are handled by
+{pipeflow}, whereas with nested pipelines you control the loop and can
+parallelize it yourself.</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

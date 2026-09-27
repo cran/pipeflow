@@ -12,7 +12,7 @@
 
 
 
-<title>Modifying existing pipelines</title>
+<title>Modify existing pipelines</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -48,9 +48,8 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
-html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -337,7 +336,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Modifying existing pipelines</h1>
+<h1 class="title toc-ignore">Modify existing pipelines</h1>
 
 
 <div id="TOC">
@@ -355,15 +354,17 @@ steps</a></li>
 <div id="existing-pipeline" class="section level3">
 <h3>Existing pipeline</h3>
 <p>Let’s start where we left off in the <a href="v01-get-started.html">Get started with pipeflow</a> vignette, that
-is, we have the following pipeline</p>
+is, we have the following pipeline.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>pip</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (4 steps)</span></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co">#          step             depends                out state</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co"># 1:       data                     &lt;data.frame[10x6]&gt;  done</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># 2:  data_prep                data &lt;data.frame[10x7]&gt;  done</span></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co"># 3:  model_fit           data_prep           &lt;lm[13]&gt;  done</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co"># 4: model_plot model_fit,data_prep  &lt;ggplot2::ggplot&gt;  done</span></span></code></pre></div>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (4 steps)</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co">#    step                     params  depends state                out</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co"># 1: data                       data           done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># 2: prep                         df     data  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co"># 3:  fit                  data,xVar     prep  done           &lt;lm[13]&gt;</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co"># 4: plot model,data,xVar,xLab,title fit,prep  done  &lt;ggplot2::ggplot&gt;</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
 <p>with the following set data</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">pip_get_params</span>(pip)[[<span class="st">&quot;data&quot;</span>]] <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">3</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#   Ozone Solar.R Wind Temp Month Day</span></span>
@@ -373,140 +374,146 @@ is, we have the following pipeline</p>
 </div>
 <div id="insert-new-step" class="section level3">
 <h3>Insert new step</h3>
-<p>Let’s say we want to insert a new step after the
-<code>data_prep</code> step that standardizes the y-variable.</p>
+<p>Let’s say we want to insert a new step after the <code>prep</code>
+step that standardizes the y-variable. To do this, we use
+<code>pip_add()</code> with the <code>after</code> argument.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_add</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>    <span class="st">&quot;standardize&quot;</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    ) {</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>        data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        data</span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    },</span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    <span class="at">after =</span> <span class="st">&quot;data_prep&quot;</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>)</span></code></pre></div>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>prep,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>             <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>) {</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        data[, yVar] <span class="ot">&lt;-</span> <span class="fu">scale</span>(data[, yVar])</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>        data</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    },</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="at">after =</span> <span class="st">&quot;prep&quot;</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>)</span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (5 steps)</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#           step             depends                out state</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 1:        data                     &lt;data.frame[10x6]&gt;  done</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 2:   data_prep                data &lt;data.frame[10x7]&gt;  done</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 3: standardize           data_prep             [NULL]   new</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># 4:   model_fit           data_prep           &lt;lm[13]&gt;  done</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,data_prep  &lt;ggplot2::ggplot&gt;  done</span></span></code></pre></div>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (5 steps)</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#           step                     params  depends state                out</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># 1:        data                       data           done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># 2:        prep                         df     data  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># 3: standardize                  data,yVar     prep   new             [NULL]</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># 4:         fit                  data,xVar     prep  done           &lt;lm[13]&gt;</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># 5:        plot model,data,xVar,xLab,title fit,prep  done  &lt;ggplot2::ggplot&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
 <p>The <code>standardize</code> step is now part of the pipeline, but so
 far it is not used by any other step.</p>
 </div>
 <div id="replace-existing-steps" class="section level3">
 <h3>Replace existing steps</h3>
-<p>Let’s revisit the function definition of the <code>model_fit</code>
+<p>Let’s revisit the function definition of the <code>fit</code>
 step</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip[[<span class="st">&quot;model_fit&quot;</span>, <span class="st">&quot;fun&quot;</span>]]</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># function (data = ~data_prep, xVar = &quot;Solar.R&quot;) </span></span>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip[[<span class="st">&quot;fit&quot;</span>, <span class="st">&quot;fun&quot;</span>]]</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># function (data = ~prep, xVar = &quot;Temp.Celsius&quot;) </span></span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># {</span></span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#     lm(paste(&quot;Ozone ~&quot;, xVar), data = data)</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># }</span></span></code></pre></div>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># }</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># &lt;environment: 0x5606deb85658&gt;</span></span></code></pre></div>
 <p>To use the standardized data, we need to change the data dependency
 such that it refers to the <code>standardize</code> step. Also instead
 of a fixed y-variable in the model, let’s pass it as a parameter.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="st">&quot;model_fit&quot;</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize, <span class="co"># &lt;- changed data reference</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span> <span class="co"># &lt;- new y-variable</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    ) {</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    }</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>)</span></code></pre></div>
-<p>The <code>model_plot</code> step needs to be updated in a similar
-way.</p>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="st">&quot;fit&quot;</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>standardize, <span class="co"># &lt;- changed data reference</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span> <span class="co"># &lt;- new y-variable</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    ) {</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>        <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>    }</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>)</span></code></pre></div>
+<p>The <code>plot</code> step needs to be updated in a similar way.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_replace</span>(</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;model_plot&quot;</span>,</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="cf">function</span>(</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        <span class="at">model =</span> <span class="sc">~</span>model_fit,</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>        <span class="at">data =</span> <span class="sc">~</span>standardize, <span class="co"># &lt;- changed data reference</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>        <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>, <span class="co"># &lt;- new y-variable</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    ) {</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>        coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>        <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>            <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>            <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>            <span class="fu">labs</span>(<span class="at">title =</span> title)</span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>    }</span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>)</span></code></pre></div>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="cf">function</span>(<span class="at">model =</span> <span class="sc">~</span>fit,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>             <span class="at">data =</span> <span class="sc">~</span>standardize, <span class="co"># &lt;- changed data reference</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>             <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>             <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span>, <span class="co"># &lt;- new y-variable</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>             <span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span>) {</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>        <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>            <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>            <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>            <span class="fu">labs</span>(<span class="at">title =</span> title)</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>    }</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>)</span></code></pre></div>
 <p>The updated pipeline now looks as follows.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (5 steps)</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#           step               depends                out state</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;  done</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;  done</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 3: standardize             data_prep             [NULL]   new</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize             [NULL]   new</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize             [NULL]   new</span></span></code></pre></div>
-<p>We see that the <code>model_fit</code> and <code>model_plot</code>
-steps now use (i.e., depend on) the standardized data. Let’s re-run the
-pipeline and inspect the output.</p>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (5 steps)</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#           step                     params         depends state                out</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># 1:        data                       data                  done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 2:        prep                         df            data  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 3: standardize                  data,yVar            prep   new             [NULL]</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 4:         fit             data,xVar,yVar     standardize   new             [NULL]</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 5:        plot model,data,xVar,yVar,title fit,standardize   new             [NULL]</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
+<p>We see that the <code>fit</code> and <code>plot</code> steps now use
+(i.e., depend on) the standardized data. Let’s re-run the pipeline and
+inspect the output.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Solar.R&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Wind&quot;</span>))</span>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.039 UTC]: Start run of pipeflow_pip &#39;my-pip&#39;</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.039 UTC]: Step 1/5 data - skipping done step</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.039 UTC]: Step 2/5 data_prep - skipping done step</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.039 UTC]: Step 3/5 standardize</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.042 UTC]: Step 4/5 model_fit</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.044 UTC]: Step 5/5 model_plot</span></span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:06.053 UTC]: Finished run of pipeflow_pip &#39;my-pip&#39;</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip[[<span class="st">&quot;model_fit&quot;</span>, <span class="st">&quot;out&quot;</span>]] <span class="sc">|&gt;</span> <span class="fu">coefficients</span>()</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.159 UTC]: Starting run of pipeflow &#39;my-pip&#39;</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.159 UTC]: Step 1/5 data - skipping done step</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.159 UTC]: Step 2/5 prep - skipping done step</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.159 UTC]: Step 3/5 standardize</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.160 UTC]: Step 4/5 fit</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.162 UTC]: Step 5/5 plot</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.170 UTC]: Finished run of pipeflow &#39;my-pip&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>pip[[<span class="st">&quot;fit&quot;</span>, <span class="st">&quot;out&quot;</span>]] <span class="sc">|&gt;</span> <span class="fu">coefficients</span>()</span>
 <span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co">#  (Intercept)      Solar.R </span></span>
 <span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co">#  0.979672739 -0.006625601</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip[[<span class="st">&quot;model_plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" aria-label="model-plot" src="data:image/png;base64,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" alt="model-plot" /></p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip[[<span class="st">&quot;plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
+<p><img src="data:image/png;base64,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" alt="model-plot" /></p>
 </div>
 <div id="removing-steps" class="section level3">
 <h3>Removing steps</h3>
 <p>Let’s see the pipeline again.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (5 steps)</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co">#           step               depends                out state</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co"># 1:        data                       &lt;data.frame[10x6]&gt;  done</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># 2:   data_prep                  data &lt;data.frame[10x7]&gt;  done</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># 3: standardize             data_prep &lt;data.frame[10x7]&gt;  done</span></span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># 4:   model_fit           standardize           &lt;lm[13]&gt;  done</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co"># 5:  model_plot model_fit,standardize  &lt;ggplot2::ggplot&gt;  done</span></span></code></pre></div>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (5 steps)</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co">#           step                     params         depends state                out</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co"># 1:        data                       data                  done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># 2:        prep                         df            data  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># 3: standardize                  data,yVar            prep  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># 4:         fit             data,xVar,yVar     standardize  done           &lt;lm[13]&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co"># 5:        plot model,data,xVar,yVar,title fit,standardize  done  &lt;ggplot2::ggplot&gt;</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
 <p>When you are trying to remove a step, {pipeflow} by default checks if
 the step is used by any other step, and raises an error if removing the
-step would violate the integrity of the pipeline.</p>
+step would violate the integrity of the pipeline</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">try</span>(<span class="fu">pip_remove</span>(pip, <span class="st">&quot;standardize&quot;</span>))</span>
 <span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># Error in pip_remove(pip, &quot;standardize&quot;) : </span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#   cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#   cannot remove step &#39;standardize&#39; because the following steps depend on it: &#39;fit&#39;, &#39;plot&#39;</span></span></code></pre></div>
 <p>To enforce removing a step together with all its downstream
-dependencies, you can use the <code>recursive</code> argument.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">pip_remove</span>(pip, <span class="st">&quot;standardize&quot;</span>, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Removing step &#39;standardize&#39; and its downstream dependencies: &#39;model_fit&#39;, &#39;model_plot&#39;</span></span></code></pre></div>
+dependencies, you can use the <code>force</code> argument.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">pip_remove</span>(pip, <span class="st">&quot;standardize&quot;</span>, <span class="at">force =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Removing step &#39;standardize&#39; and its downstream dependencies: &#39;fit&#39;, &#39;plot&#39;</span></span></code></pre></div>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (2 steps)</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co">#         step depends                out state</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># 1:      data         &lt;data.frame[10x6]&gt;  done</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># 2: data_prep    data &lt;data.frame[10x7]&gt;  done</span></span></code></pre></div>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (2 steps)</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co">#    step params depends state                out</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># 1: data   data          done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># 2: prep     df    data  done &lt;data.frame[10x7]&gt;</span></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
 <p>Naturally, the last step never has any downstream dependencies, so it
 can be removed without any issues.</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>last_step <span class="ot">&lt;-</span> <span class="fu">tail</span>(pip[[<span class="st">&quot;step&quot;</span>]], <span class="dv">1</span>)</span>
 <span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="fu">pip_remove</span>(pip, last_step)</span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>pip</span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (1 step)</span></span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co"># ------------------------------</span></span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co">#    step depends                out state</span></span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># 1: data         &lt;data.frame[10x6]&gt;  done</span></span></code></pre></div>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (1 step)</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co"># --------------------------</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co">#    step params depends state                out</span></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># 1: data   data          done &lt;data.frame[10x6]&gt;</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co"># --------------------------</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:14</span></span></code></pre></div>
 <p>Replacing steps in a pipeline as shown in this vignette will allow to
 re-use existing pipelines and adapt them programmatically to new
 requirements. Another way of re-using pipelines is to combine them,
-which is shown in the <a href="v03-combine-pipelines.html">Combining
+which is shown in the <a href="v03a-combine-pipelines.html">Combine
 pipelines</a> vignette.</p>
 </div>
 

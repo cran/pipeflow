@@ -12,7 +12,7 @@
 
 
 
-<title>Collecting and filtering output</title>
+<title>Collect and group output</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -48,9 +48,8 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
-html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -337,280 +336,187 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Collecting and filtering output</h1>
+<h1 class="title toc-ignore">Collect and group output</h1>
 
 
 <div id="TOC">
 <ul>
-<li><a href="#tagging-steps" id="toc-tagging-steps">Tagging
-steps</a></li>
+<li><a href="#setup" id="toc-setup">Setup</a></li>
 <li><a href="#flat-output-collection" id="toc-flat-output-collection">Flat output collection</a></li>
 <li><a href="#filtered-output-using-tags" id="toc-filtered-output-using-tags">Filtered output using tags</a></li>
-<li><a href="#grouped-output-via-views" id="toc-grouped-output-via-views">Grouped output via views</a></li>
-<li><a href="#more-on-views" id="toc-more-on-views">More on
-views</a></li>
+<li><a href="#grouped-output" id="toc-grouped-output">Grouped
+output</a></li>
 </ul>
 </div>
 
-<p>Generally speaking, one should keep pipeline steps as simple as
-possible, basically following the principle <em>“one step, one
-task”</em>. Splitting up analysis steps into multiple functions
-naturally can be hard to manage, but since {pipeflow} manages all
-function and parameter dependencies for you, this is not a problem.</p>
-<p>Following this principle, usually a lot of pipeline steps will carry
-intermediate results and only a few steps will contain the final output
-we are interested in. This vignette shows how to conveniently tag,
-collect, and filter pipeline outputs using tags and views.</p>
-<div id="tagging-steps" class="section level3">
-<h3>Tagging steps</h3>
-<p>Tags let you label steps with meaningful keywords so you can later
-filter the pipeline by topic, stage, or output type. Tags can be set
-during pipeline creation or later using <code>pip_set_tags()</code>.</p>
+<p>{pipeflow} manages all functions and parameter dependencies for you,
+thereby enabling you to create a lot of pipeline steps without losing
+track<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>.
+You therefore can (and should) basically follow the principle <em>“one
+step, one task”</em>, which on the other hand means that most steps will
+be helpers and only a few of them contain the final output we are
+interested in.</p>
+<p>This vignette shows how to conveniently collect and group those final
+outputs.</p>
+<div id="setup" class="section level3">
+<h3>Setup</h3>
+<p>Again, to keep the focus on the displayed functionality, the step
+functions are kept very basic.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pip&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>        <span class="st">&quot;data&quot;</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> airquality) data</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data_prep&quot;</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">data =</span> <span class="sc">~</span>data) {</span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>            <span class="fu">replace</span>(data, <span class="st">&quot;Temp.Celsius&quot;</span>, (data[, <span class="st">&quot;Temp&quot;</span>] <span class="sc">-</span> <span class="dv">32</span>) <span class="sc">*</span> <span class="dv">5</span> <span class="sc">/</span> <span class="dv">9</span>)</span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>        },</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>        <span class="at">tags =</span> <span class="st">&quot;data&quot;</span>                   <span class="co"># &lt;-- set &#39;data&#39; tag</span></span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>        <span class="st">&quot;data_summary&quot;</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>        ) {</span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>            <span class="fu">format</span>(<span class="fu">summary</span>(data[, <span class="fu">c</span>(xVar, yVar)])) <span class="sc">|&gt;</span></span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>                <span class="fu">as.data.frame</span>(<span class="at">row.names =</span> <span class="cn">NA</span>)</span>
-<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>        },</span>
-<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;summary&quot;</span>)     <span class="co"># &lt;-- set &#39;data&#39; and &#39;summary&#39; tags</span></span>
-<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>        <span class="st">&quot;data_plot&quot;</span>,</span>
-<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
-<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a>        ) {</span>
-<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a>            <span class="fu">require</span>(ggplot2, <span class="at">quietly =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a>            <span class="fu">ggplot</span>(data) <span class="sc">+</span></span>
-<span id="cb1-35"><a href="#cb1-35" tabindex="-1"></a>                <span class="fu">geom_point</span>(<span class="fu">aes</span>(.data[[xVar]], .data[[yVar]])) <span class="sc">+</span></span>
-<span id="cb1-36"><a href="#cb1-36" tabindex="-1"></a>                <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Data&quot;</span>)</span>
-<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a>        },</span>
-<span id="cb1-38"><a href="#cb1-38" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;plot&quot;</span>)        <span class="co"># &lt;-- set &#39;data&#39; and &#39;plot&#39; tags</span></span>
-<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-40"><a href="#cb1-40" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a>        <span class="st">&quot;model_fit&quot;</span>,</span>
-<span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-43"><a href="#cb1-43" tabindex="-1"></a>            <span class="at">data =</span> <span class="sc">~</span>data_prep,</span>
-<span id="cb1-44"><a href="#cb1-44" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb1-45"><a href="#cb1-45" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb1-46"><a href="#cb1-46" tabindex="-1"></a>        ) {</span>
-<span id="cb1-47"><a href="#cb1-47" tabindex="-1"></a>            <span class="fu">lm</span>(<span class="fu">paste</span>(yVar, <span class="st">&quot;~&quot;</span>, xVar), <span class="at">data =</span> data)</span>
-<span id="cb1-48"><a href="#cb1-48" tabindex="-1"></a>        },</span>
-<span id="cb1-49"><a href="#cb1-49" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;fit&quot;</span>)        <span class="co"># &lt;-- set &#39;model&#39; and &#39;fit&#39; tags</span></span>
-<span id="cb1-50"><a href="#cb1-50" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-51"><a href="#cb1-51" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-52"><a href="#cb1-52" tabindex="-1"></a>        <span class="st">&quot;model_summary&quot;</span>,</span>
-<span id="cb1-53"><a href="#cb1-53" tabindex="-1"></a>        <span class="cf">function</span>(<span class="at">fit =</span> <span class="sc">~</span>model_fit) {</span>
-<span id="cb1-54"><a href="#cb1-54" tabindex="-1"></a>            <span class="fu">summary</span>(fit) <span class="sc">|&gt;</span></span>
-<span id="cb1-55"><a href="#cb1-55" tabindex="-1"></a>                <span class="fu">coefficients</span>() <span class="sc">|&gt;</span></span>
-<span id="cb1-56"><a href="#cb1-56" tabindex="-1"></a>                <span class="fu">as.data.frame</span>()</span>
-<span id="cb1-57"><a href="#cb1-57" tabindex="-1"></a>        },</span>
-<span id="cb1-58"><a href="#cb1-58" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;summary&quot;</span>)    <span class="co"># &lt;-- set &#39;model&#39; and &#39;summary&#39; tags</span></span>
-<span id="cb1-59"><a href="#cb1-59" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-60"><a href="#cb1-60" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
-<span id="cb1-61"><a href="#cb1-61" tabindex="-1"></a>        <span class="st">&quot;model_plot&quot;</span>,</span>
-<span id="cb1-62"><a href="#cb1-62" tabindex="-1"></a>        <span class="cf">function</span>(</span>
-<span id="cb1-63"><a href="#cb1-63" tabindex="-1"></a>            <span class="at">model =</span> <span class="sc">~</span>model_fit,</span>
-<span id="cb1-64"><a href="#cb1-64" tabindex="-1"></a>            <span class="at">data_plot =</span> <span class="sc">~</span>data_plot,</span>
-<span id="cb1-65"><a href="#cb1-65" tabindex="-1"></a>            <span class="at">xVar =</span> <span class="st">&quot;Temp.Celsius&quot;</span>,</span>
-<span id="cb1-66"><a href="#cb1-66" tabindex="-1"></a>            <span class="at">yVar =</span> <span class="st">&quot;Ozone&quot;</span></span>
-<span id="cb1-67"><a href="#cb1-67" tabindex="-1"></a>        ) {</span>
-<span id="cb1-68"><a href="#cb1-68" tabindex="-1"></a>            coeffs <span class="ot">&lt;-</span> <span class="fu">coefficients</span>(model)</span>
-<span id="cb1-69"><a href="#cb1-69" tabindex="-1"></a>            data_plot <span class="sc">+</span></span>
-<span id="cb1-70"><a href="#cb1-70" tabindex="-1"></a>                <span class="fu">geom_abline</span>(<span class="at">intercept =</span> coeffs[<span class="dv">1</span>], <span class="at">slope =</span> coeffs[<span class="dv">2</span>]) <span class="sc">+</span></span>
-<span id="cb1-71"><a href="#cb1-71" tabindex="-1"></a>                <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Linear model fit&quot;</span>)</span>
-<span id="cb1-72"><a href="#cb1-72" tabindex="-1"></a>        },</span>
-<span id="cb1-73"><a href="#cb1-73" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;plot&quot;</span>)       <span class="co"># &lt;-- set &#39;model&#39; and &#39;plot&#39; tags</span></span>
-<span id="cb1-74"><a href="#cb1-74" tabindex="-1"></a>    )</span></code></pre></div>
-<p>We used two families of tags:
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">x =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) x) <span class="sc">|&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;prep&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>data) x <span class="sc">*</span> <span class="dv">2</span>, <span class="at">tags =</span> <span class="st">&quot;data&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep) <span class="fu">range</span>(x),</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_fit&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep, <span class="at">k =</span> <span class="dv">2</span>) x <span class="sc">*</span> k, <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;fit&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>model_fit) <span class="fu">sum</span>(x),</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>    )</span></code></pre></div>
+<p>As introduced in the <a href="v03b-pipeline-views.html">previous
+vignette</a>, we use tags to label steps, specifically,
 <code>&quot;data&quot;</code>/<code>&quot;model&quot;</code> to distinguish the topic, and
-<code>&quot;summary&quot;</code>/<code>&quot;plot&quot;</code>/<code>&quot;fit&quot;</code> for the
-output type. Whenever tags are defined, they are shown in the pipeline
-overview:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>pip</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (7 steps)</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#             step             depends    out state          tags</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 1:          data                     [NULL]   new              </span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 2:     data_prep                data [NULL]   new          data</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># 3:  data_summary           data_prep [NULL]   new  data,summary</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co"># 4:     data_plot           data_prep [NULL]   new     data,plot</span></span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># 5:     model_fit           data_prep [NULL]   new     model,fit</span></span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># 6: model_summary           model_fit [NULL]   new model,summary</span></span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># 7:    model_plot model_fit,data_plot [NULL]   new    model,plot</span></span></code></pre></div>
-<p>Before showing how to make use of the tags, let’s run the pipeline
-and inspect the output individually as we did in the previous
-vignettes.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.963 UTC]: Start run of pipeflow_pip &#39;my-pip&#39;</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.964 UTC]: Step 1/7 data</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.964 UTC]: Step 2/7 data_prep</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.966 UTC]: Step 3/7 data_summary</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.969 UTC]: Step 4/7 data_plot</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.976 UTC]: Step 5/7 model_fit</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.978 UTC]: Step 6/7 model_summary</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.981 UTC]: Step 7/7 model_plot</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:08.986 UTC]: Finished run of pipeflow_pip &#39;my-pip&#39;</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>pip</span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (7 steps)</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#             step             depends                 out state          tags</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co"># 1:          data                     &lt;data.frame[153x6]&gt;  done              </span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co"># 2:     data_prep                data &lt;data.frame[153x7]&gt;  done          data</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co"># 3:  data_summary           data_prep   &lt;data.frame[7x2]&gt;  done  data,summary</span></span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co"># 4:     data_plot           data_prep   &lt;ggplot2::ggplot&gt;  done     data,plot</span></span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co"># 5:     model_fit           data_prep            &lt;lm[13]&gt;  done     model,fit</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co"># 6: model_summary           model_fit   &lt;data.frame[2x4]&gt;  done model,summary</span></span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co"># 7:    model_plot model_fit,data_plot   &lt;ggplot2::ggplot&gt;  done    model,plot</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip[[<span class="st">&quot;data_plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip[[<span class="st">&quot;model_plot&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span></code></pre></div>
-<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<code>&quot;summary&quot;</code>/<code>&quot;fit&quot;</code> for the output type. Let’s
+briefly run the pipeline and see what’s in the <code>out</code>
+column.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>(<span class="fu">pip_run</span>(pip, <span class="at">lgr =</span> <span class="cn">NULL</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (5 steps)</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#             step params   depends state            out          tags</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># 1:          data      x            done      1,2,3,4,5              </span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># 2:          prep      x      data  done  2, 4, 6, 8,10          data</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># 3:  data_summary      x      prep  done           2,10  data,summary</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co"># 4:     model_fit    x,k      prep  done  4, 8,12,16,20     model,fit</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># 5: model_summary      x model_fit  done             60 model,summary</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
 </div>
 <div id="flat-output-collection" class="section level3">
 <h3>Flat output collection</h3>
-<p><code>pip_collect_out()</code> returns all step outputs as a flat
-named list.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>out <span class="ot">&lt;-</span> <span class="fu">pip_collect_out</span>(pip)</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="fu">names</span>(out)</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># [1] &quot;data&quot;          &quot;data_prep&quot;     &quot;data_summary&quot;  &quot;data_plot&quot;     &quot;model_fit&quot;     &quot;model_summary&quot;</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># [7] &quot;model_plot&quot;</span></span></code></pre></div>
+<p>To collect output from a pipeline we use <code>pip_collect()</code>,
+which by default returns all step outputs as a flat named list.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">pip_collect</span>(pip)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># $data</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># [1] 1 2 3 4 5</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># $prep</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># [1]  2  4  6  8 10</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># $data_summary</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># [1]  2 10</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># $model_fit</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># [1]  4  8 12 16 20</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># $model_summary</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># [1] 60</span></span></code></pre></div>
 </div>
 <div id="filtered-output-using-tags" class="section level3">
 <h3>Filtered output using tags</h3>
-<p>To collect only the output of steps with a specific tag, we use
-<code>pip_view()</code>, which is {pipeflow}’s general-purpose function
-for filtering pipelines, and then call <code>pip_collect_out()</code> on
-the filtered pipeline. To collect only the plots, for example, we can
-filter by the <code>plot</code> tag.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 7 steps)</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#        step             depends               out state       tags</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#   data_plot           data_prep &lt;ggplot2::ggplot&gt;  done  data,plot</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#  model_plot model_fit,data_plot &lt;ggplot2::ggplot&gt;  done model,plot</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="fu">pip_view</span>(<span class="at">tags =</span> <span class="st">&quot;plot&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="fu">pip_collect_out</span>() <span class="sc">|&gt;</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    gridExtra<span class="sc">::</span><span class="fu">grid.arrange</span>(<span class="at">grobs =</span> _, <span class="at">nrow =</span> <span class="dv">2</span>)</span></code></pre></div>
-<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<p>To collect only the output of steps with a specific tag, we filter
+the pipeline with <code>pip_view()</code> and then call
+<code>pip_collect()</code> on the resulting view. For example, to
+collect just the summaries or model output, we filter by their
+respective tags:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;summary&quot;</span>) <span class="sc">|&gt;</span> <span class="co"># or pip[tags %like% &quot;summary&quot;]</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>    <span class="fu">pip_collect</span>()</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># $data_summary</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># [1]  2 10</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># $model_summary</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># [1] 60</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;model&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>    <span class="fu">pip_collect</span>()</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># $model_fit</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co"># [1]  4  8 12 16 20</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co"># $model_summary</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co"># [1] 60</span></span></code></pre></div>
 </div>
-<div id="grouped-output-via-views" class="section level3">
-<h3>Grouped output via views</h3>
-<p>Grouped output is achieved by composing <code>pip_view()</code> with
-<code>pip_collect_out()</code>. For example, to collect outputs grouped
-by topic (<code>&quot;data&quot;</code> and <code>&quot;model&quot;</code>):</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>grouped <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>    <span class="at">data  =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;data&quot;</span>)  <span class="sc">|&gt;</span> <span class="fu">pip_collect_out</span>(),</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    <span class="at">model =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;model&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">pip_collect_out</span>()</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>)</span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="fu">names</span>(grouped[[<span class="st">&quot;data&quot;</span>]])</span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># [1] &quot;data_prep&quot;    &quot;data_summary&quot; &quot;data_plot&quot;</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="fu">names</span>(grouped[[<span class="st">&quot;model&quot;</span>]])</span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># [1] &quot;model_fit&quot;     &quot;model_summary&quot; &quot;model_plot&quot;</span></span></code></pre></div>
+<div id="grouped-output" class="section level3">
+<h3>Grouped output</h3>
+<p>Often the output often different groups will be further combined.
+Let’s add some more tags to represent section titles of a statistical
+report.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>pip[step <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;prep&quot;</span>)] <span class="sc">|&gt;</span> <span class="fu">pip_tag</span>(<span class="st">&quot;Introduction&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>pip[step <span class="sc">==</span> <span class="st">&quot;model_fit&quot;</span>] <span class="sc">|&gt;</span> <span class="fu">pip_tag</span>(<span class="st">&quot;Model&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip[step <span class="sc">%like%</span> <span class="st">&quot;summary&quot;</span>] <span class="sc">|&gt;</span> <span class="fu">pip_tag</span>(<span class="st">&quot;Summary&quot;</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>pip</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; my-pip (5 steps)</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#             step params   depends state            out                  tags</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 1:          data      x            done      1,2,3,4,5          Introduction</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 2:          prep      x      data  done  2, 4, 6, 8,10     data,Introduction</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 3:  data_summary      x      prep  done           2,10  data,summary,Summary</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># 4:     model_fit    x,k      prep  done  4, 8,12,16,20       model,fit,Model</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># 5: model_summary      x model_fit  done             60 model,summary,Summary</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<p>Naturally, we then would group the output as follows:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>report <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="at">Introduction =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;Introduction&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">pip_collect</span>(),</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="at">Model =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;Model&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">pip_collect</span>(),</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    <span class="at">Summary =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;Summary&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">pip_collect</span>()</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="fu">str</span>(report)</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># List of 3</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co">#  $ Introduction:List of 2</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#   ..$ data: int [1:5] 1 2 3 4 5</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#   ..$ prep: num [1:5] 2 4 6 8 10</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co">#  $ Model       :List of 1</span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#   ..$ model_fit: num [1:5] 4 8 12 16 20</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#  $ Summary     :List of 2</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#   ..$ data_summary : num [1:2] 2 10</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#   ..$ model_summary: num 60</span></span></code></pre></div>
+<p>As this use case is so common, since version <code>0.4.0</code> the
+<code>pip_collect</code> function natively supports grouping via a
+<code>by</code> parameter, which allows to simplify the above call as
+follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>byTags <span class="ot">&lt;-</span> <span class="fu">pip_collect</span>(pip, <span class="at">by =</span> <span class="st">&quot;tags&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>report2 <span class="ot">&lt;-</span> byTags[<span class="fu">c</span>(<span class="st">&quot;Introduction&quot;</span>, <span class="st">&quot;Model&quot;</span>, <span class="st">&quot;Summary&quot;</span>)]</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">str</span>(report2)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># List of 3</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#  $ Introduction:List of 2</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#   ..$ data: int [1:5] 1 2 3 4 5</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#   ..$ prep: num [1:5] 2 4 6 8 10</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#  $ Model       :List of 1</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#   ..$ model_fit: num [1:5] 4 8 12 16 20</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#  $ Summary     :List of 2</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#   ..$ data_summary : num [1:2] 2 10</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#   ..$ model_summary: num 60</span></span></code></pre></div>
+<p>You now also can return the collected results as a compact table
+…</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">pip_collect</span>(pip, <span class="at">by =</span> <span class="st">&quot;tags&quot;</span>, <span class="at">as.table =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co">#            tags       out</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#          &lt;char&gt;    &lt;list&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># 1: Introduction &lt;list[2]&gt;</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># 2:         data &lt;list[2]&gt;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># 3:      summary &lt;list[2]&gt;</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># 4:      Summary &lt;list[2]&gt;</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># 5:        model &lt;list[2]&gt;</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># 6:          fit &lt;list[1]&gt;</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co"># 7:        Model &lt;list[1]&gt;</span></span></code></pre></div>
+<p>… and of course <code>by</code> can be based on other variables, for
+example, by all the dependencies.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_collect</span>(pip, <span class="at">by =</span> <span class="st">&quot;depends&quot;</span>, <span class="at">as.table =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#      depends       out</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#       &lt;char&gt;    &lt;list&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># 1:      data &lt;list[1]&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># 2:      prep &lt;list[2]&gt;</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># 3: model_fit &lt;list[1]&gt;</span></span></code></pre></div>
+<p>For more details see <code>?pip_collect</code>.</p>
 </div>
-<div id="more-on-views" class="section level3">
-<h3>More on views</h3>
-<p>To make the example a bit more interesting, we first update some
-parameters.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Solar.R&quot;</span>, <span class="at">yVar =</span> <span class="st">&quot;Wind&quot;</span>))</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>pip</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (7 steps)</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#             step             depends                 out    state          tags</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># 1:          data                     &lt;data.frame[153x6]&gt;     done              </span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># 2:     data_prep                data &lt;data.frame[153x7]&gt;     done          data</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># 3:  data_summary           data_prep   &lt;data.frame[7x2]&gt; outdated  data,summary</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># 4:     data_plot           data_prep   &lt;ggplot2::ggplot&gt; outdated     data,plot</span></span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co"># 5:     model_fit           data_prep            &lt;lm[13]&gt; outdated     model,fit</span></span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co"># 6: model_summary           model_fit   &lt;data.frame[2x4]&gt; outdated model,summary</span></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="co"># 7:    model_plot model_fit,data_plot   &lt;ggplot2::ggplot&gt; outdated    model,plot</span></span></code></pre></div>
-<p>{pipeflow} views provide a variety of filtering options. In the
-previous section, the filtering was done based on tags, but you can also
-filter based on other properties, for example, all steps that depend on
-the <code>model_fit</code> step:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span> <span class="fu">pip_view</span>(<span class="at">filter =</span> <span class="fu">list</span>(<span class="at">depends =</span> <span class="st">&quot;model_fit&quot;</span>, <span class="at">state =</span> <span class="st">&quot;outdated&quot;</span>))</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 7 steps)</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co">#           step             depends               out    state          tags</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#  model_summary           model_fit &lt;data.frame[2x4]&gt; outdated model,summary</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#     model_plot model_fit,data_plot &lt;ggplot2::ggplot&gt; outdated    model,plot</span></span></code></pre></div>
-<p>or using regex-based filtering, for example, to filter all outdated
-steps starting with <code>data</code>:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip <span class="sc">|&gt;</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    <span class="fu">pip_view</span>(<span class="at">filter =</span> <span class="fu">list</span>(<span class="at">step =</span> <span class="st">&quot;^data&quot;</span>, <span class="at">state =</span> <span class="st">&quot;outdated&quot;</span>), <span class="at">fixed =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (2 of 7 steps)</span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co">#          step   depends               out    state         tags</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co">#  data_summary data_prep &lt;data.frame[7x2]&gt; outdated data,summary</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co">#     data_plot data_prep &lt;ggplot2::ggplot&gt; outdated    data,plot</span></span></code></pre></div>
-<p>Views can also be chained together:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>v <span class="ot">&lt;-</span> pip <span class="sc">|&gt;</span> <span class="fu">pip_view</span>(<span class="at">filter =</span> <span class="fu">list</span>(<span class="at">state =</span> <span class="st">&quot;outdated&quot;</span>))</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>v</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view (5 of 7 steps)</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># ------------------------------------------</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#           step             depends               out    state          tags</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#   data_summary           data_prep &lt;data.frame[7x2]&gt; outdated  data,summary</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#      data_plot           data_prep &lt;ggplot2::ggplot&gt; outdated     data,plot</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#      model_fit           data_prep          &lt;lm[13]&gt; outdated     model,fit</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#  model_summary           model_fit &lt;data.frame[2x4]&gt; outdated model,summary</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#     model_plot model_fit,data_plot &lt;ggplot2::ggplot&gt; outdated    model,plot</span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>v2 <span class="ot">&lt;-</span> v <span class="sc">|&gt;</span> <span class="fu">pip_view</span>(<span class="at">tags =</span> <span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>v2</span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co"># &lt;pipeflow_view&gt; my-pip view view (2 of 7 steps)</span></span>
-<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co"># -----------------------------------------------</span></span>
-<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#        step             depends               out    state       tags</span></span>
-<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#   data_plot           data_prep &lt;ggplot2::ggplot&gt; outdated  data,plot</span></span>
-<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#  model_plot model_fit,data_plot &lt;ggplot2::ggplot&gt; outdated model,plot</span></span></code></pre></div>
-<p>Last but not least, views can be run as pipelines themselves, which
-allows to conveniently re-run only the filtered steps, while {pipeflow}
-ensures that any upstream dependencies are run first if needed.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>v2 <span class="sc">|&gt;</span> <span class="fu">pip_run</span>()</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:09.980 UTC]: Start run of pipeflow_view &#39;my-pip view view&#39;</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:09.980 UTC]: Step 1/4 [upstream] data_prep - skipping done step</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:09.980 UTC]: Step 2/4 [view] data_plot</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:09.990 UTC]: Step 3/4 [upstream] model_fit</span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:09.992 UTC]: Step 4/4 [view] model_plot</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co"># info [2026-06-14 20:27:10.000 UTC]: Finished run of pipeflow_view &#39;my-pip view view&#39;</span></span></code></pre></div>
-<p>Having a closer look at the run log, you’ll see which steps were
-re-run as part of the <code>[view]</code> and which were re-run as
-<code>[upstream]</code> dependencies. Since all views work by reference
-on the given pipeline, the original pipeline is now up-to-date for the
-filtered steps.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pip</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># &lt;pipeflow_pip&gt; my-pip (7 steps)</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># -------------------------------</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co">#             step             depends                 out    state          tags</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co"># 1:          data                     &lt;data.frame[153x6]&gt;     done              </span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co"># 2:     data_prep                data &lt;data.frame[153x7]&gt;     done          data</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># 3:  data_summary           data_prep   &lt;data.frame[7x2]&gt; outdated  data,summary</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co"># 4:     data_plot           data_prep   &lt;ggplot2::ggplot&gt;     done     data,plot</span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co"># 5:     model_fit           data_prep            &lt;lm[13]&gt;     done     model,fit</span></span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co"># 6: model_summary           model_fit   &lt;data.frame[2x4]&gt; outdated model,summary</span></span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="co"># 7:    model_plot model_fit,data_plot   &lt;ggplot2::ggplot&gt;     done    model,plot</span></span></code></pre></div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p> The linear/sequential structure of a pipeline design
+also helps!<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 
