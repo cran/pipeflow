@@ -48,8 +48,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -454,27 +455,27 @@ pipeline.</p>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        )</span>
 <span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
 <span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.780 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.780 UTC]: Step 1/4 data</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.781 UTC]: Step 2/4 split_data</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.782 UTC]: Step 3/4 inner_run</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.785 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.785 UTC]: Step 1/3 data</span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.786 UTC]: Step 2/3 fit</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.787 UTC]: Step 3/3 coefs</span></span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.788 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Step 1/3 data</span></span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.792 UTC]: Step 2/3 fit</span></span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.793 UTC]: Step 3/3 coefs</span></span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.794 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
-<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Step 1/3 data</span></span>
-<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.796 UTC]: Step 2/3 fit</span></span>
-<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.797 UTC]: Step 3/3 coefs</span></span>
-<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.798 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
-<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.799 UTC]: Step 4/4 combine</span></span>
-<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.800 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.556 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.557 UTC]: Step 1/4 data</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.560 UTC]: Step 2/4 split_data</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.568 UTC]: Step 3/4 inner_run</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.587 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.588 UTC]: Step 1/3 data</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.591 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.600 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.606 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.634 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.635 UTC]: Step 1/3 data</span></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.636 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.646 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.653 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.664 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.665 UTC]: Step 1/3 data</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.668 UTC]: Step 2/3 fit</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.676 UTC]: Step 3/3 coefs</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.680 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.684 UTC]: Step 4/4 combine</span></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:44.689 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
 <p>The output of the <code>inner_run</code> step is a list of
 coefficient vectors, one for each species,</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>outer[[<span class="st">&quot;inner_run&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
@@ -510,7 +511,7 @@ predictor.</p>
 <span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 3:  inner_run dataList,xVar,yVar split_data outdated           &lt;list[3]&gt;</span></span>
 <span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 4:    combine              coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
 <span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:44</span></span></code></pre></div>
 <p>Since the <code>xVar</code> parameter is part of the
 <code>inner_run</code> step’s function arguments, the
 <code>inner_run</code> step’s state (and its downstream dependencies)
@@ -534,7 +535,7 @@ follows:</p>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a></span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="co"># Forward all parameters (from outer and inner)</span></span>
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>        all_params <span class="ot">&lt;-</span> .self<span class="sc">$</span><span class="fu">get_params</span>()</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="fu">pip_set_params</span>(p, all_params)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="fu">pip_set_params</span>(p, all_params, <span class="at">unknown =</span> <span class="st">&quot;ignore&quot;</span>)</span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a></span>
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>        <span class="fu">Map</span>(</span>
 <span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>            <span class="at">f =</span> run_inner_pip,</span>
@@ -555,7 +556,7 @@ follows:</p>
 <span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="co"># 3:  inner_run data,xVar,yVar,dataList split_data      new              [NULL]</span></span>
 <span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="co"># 4:    combine                   coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
 <span id="cb7-28"><a href="#cb7-28" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
-<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:44</span></span></code></pre></div>
 <p>In this version, the <code>inner_run</code> step no longer declares
 <code>xVar</code> and <code>yVar</code> as its own arguments. Instead,
 its parameters are seeded with the inner pipeline’s parameters via
@@ -564,10 +565,10 @@ combined parameter set at run time. Three aspects are worth spelling
 out:</p>
 <ul>
 <li><strong><code>.self</code></strong> refers to the pipeline that is
-currently being run and is available inside <em>every</em> step function
-without having to declare it. It exposes the usual pipeline interface,
-so <code>.self$get_params()</code> returns the current unbound
-parameters of the outer pipeline, and things like
+currently being run and is available inside every step function that
+refers to it, without having to declare it. It exposes the usual
+pipeline interface, so <code>.self$get_params()</code> returns the
+current unbound parameters of the outer pipeline, and things like
 <code>.self$name</code> or <code>.self$run()</code> work as expected.
 For more examples on this mechanism see the <a href="v06-self-modify-pipeline.html">self-modifying pipelines</a>
 vignette.</li>
@@ -600,58 +601,56 @@ the forwarding would silently be ignored. As another example,
 <span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        )</span>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
 <span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>    <span class="fu">pip_run</span>()</span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Step 1/4 data</span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.869 UTC]: Step 2/4 split_data</span></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.870 UTC]: Step 3/4 inner_run</span></span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># warn [2026-09-27 18:21:16.872 UTC]: Trying to set parameters not defined in the target: byVar</span></span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co"># Warning in pip_set_params(p, all_params): Trying to set parameters not defined in the target: byVar</span></span>
-<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.874 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
-<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.874 UTC]: Step 1/3 data</span></span>
-<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.875 UTC]: Step 2/3 fit</span></span>
-<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.876 UTC]: Step 3/3 coefs</span></span>
-<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.877 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
-<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.878 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
-<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.878 UTC]: Step 1/3 data</span></span>
-<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.879 UTC]: Step 2/3 fit</span></span>
-<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.880 UTC]: Step 3/3 coefs</span></span>
-<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.881 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
-<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.882 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
-<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.882 UTC]: Step 1/3 data</span></span>
-<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.883 UTC]: Step 2/3 fit</span></span>
-<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.884 UTC]: Step 3/3 coefs</span></span>
-<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.885 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
-<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.885 UTC]: Step 4/4 combine</span></span>
-<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:16.886 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
-<p>Note that the warning in the log above is expected and harmless.
-Basically, <code>.self$get_params()</code> returns the outer pipeline’s
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.551 UTC]: Starting run of pipeflow &#39;full analysis&#39;</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.552 UTC]: Step 1/4 data - skipping done step</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.552 UTC]: Step 2/4 split_data - skipping done step</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.553 UTC]: Step 3/4 inner_run</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.571 UTC]: Starting run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.572 UTC]: Step 1/3 data</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.578 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.583 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.585 UTC]: Finished run of pipeflow &#39;coefs for *setosa*&#39;</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.588 UTC]: Starting run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.589 UTC]: Step 1/3 data</span></span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.589 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.592 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.596 UTC]: Finished run of pipeflow &#39;coefs for *versicolor*&#39;</span></span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.602 UTC]: Starting run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.602 UTC]: Step 1/3 data</span></span>
+<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.602 UTC]: Step 2/3 fit</span></span>
+<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.605 UTC]: Step 3/3 coefs</span></span>
+<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.607 UTC]: Finished run of pipeflow &#39;coefs for *virginica*&#39;</span></span>
+<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.608 UTC]: Step 4/4 combine</span></span>
+<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:46.611 UTC]: Finished run of pipeflow &#39;full analysis&#39;</span></span></code></pre></div>
+<p>Note the <code>unknown = &quot;ignore&quot;</code> in the replacement function
+above. <code>.self$get_params()</code> returns the outer pipeline’s
 <em>entire</em> parameter set, which includes <code>byVar</code> (from
 the <code>split_data</code> step) while the inner pipeline only defines
-<code>data</code>, <code>xVar</code>, and <code>yVar</code>. Since
-<code>pip_set_params()</code> reports any parameters that are not
-defined in the target and simply leaves them unset, the inner pipeline
-still receives all parameters it knows and the result is unaffected.</p>
-<p>If you need to omit the warning (e.g. in production code), just
-suppress it:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">suppressWarnings</span>(<span class="fu">pip_set_params</span>(p, all_params))</span></code></pre></div>
+<code>data</code>, <code>xVar</code>, and <code>yVar</code>. By default,
+<code>pip_set_params()</code> warns about parameters that are not
+defined in the target. With <code>unknown = &quot;ignore&quot;</code>, it silently
+leaves them unset, so the inner pipeline still receives all parameters
+it knows and the result is unaffected. Unlike
+<code>suppressWarnings()</code>, this does not hide any other
+warning.</p>
 <p>Alternatively, you could first restrict the forwarded parameters to
 those the inner pipeline actually knows. That has the same effect but
 adds code, and since forwarding the full parameter set is the whole
 point of this pattern, there is no need for it.</p>
 <p>Again, changing one of the inner parameters will correctly outdate
 the <code>inner_run</code> step plus downstream dependencies.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(outer, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Petal.Length&quot;</span>))</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>outer</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#          step                  params    depends    state                 out</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># 1:       data                    data                done &lt;data.frame[150x5]&gt;</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># 2: split_data              data,byVar       data     done           &lt;list[3]&gt;</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># 3:  inner_run data,xVar,yVar,dataList split_data outdated           &lt;list[3]&gt;</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># 4:    combine                   coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:16</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(outer, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">xVar =</span> <span class="st">&quot;Petal.Length&quot;</span>))</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>outer</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; full analysis (4 steps)</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#          step                  params    depends    state                 out</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># 1:       data                    data                done &lt;data.frame[150x5]&gt;</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co"># 2: split_data              data,byVar       data     done           &lt;list[3]&gt;</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># 3:  inner_run data,xVar,yVar,dataList split_data outdated           &lt;list[3]&gt;</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co"># 4:    combine                   coefs  inner_run outdated   &lt;data.frame[3x2]&gt;</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co"># ----------------------------------</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:46</span></span></code></pre></div>
 <p>With the above pattern, you can now change both the inner and outer
 pipeline, adding and/or removing any steps or parameters, without having
 to worry about parameter synchronization.</p>

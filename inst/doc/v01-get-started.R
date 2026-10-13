@@ -157,8 +157,32 @@ pip
 pip_run(pip)
 pip[["plot", "out"]]
 
+## ----set-identical-values-------------------------------------------------------------------------
+pip |> pip_set_params(list(title = "Some new title", data = small_airquality))
+pip
+
+## ----set-identical-values-force-------------------------------------------------------------------
+pip |> pip_set_params(list(title = "Some new title"), force = TRUE)
+pip
+
 ## ----set-unknown-parameters, warning = TRUE-------------------------------------------------------
-pip |> pip_set_params(list(titel = "misspelled variable name", foo = "my foo"))
+pip |> pip_set_params(list(title = "warn me", foo = "my foo"))
+
+pip_get_params(pip)$title
+
+## ----ignore-unknown-parameters--------------------------------------------------------------------
+pip |> pip_set_params(list(foo = "ignore me"), unknown = "ignore")
+
+pip_get_params(pip)$title
+
+## ----error-on-unknown-parameters, error = TRUE----------------------------------------------------
+try({
+pip |> pip_set_params(
+    list(title = "Not set", foo = "my foo"),
+    unknown = "error"
+)
+pip_get_params(pip)$title
+})
 
 ## ----include = FALSE----------------------------------------------------------
 options(old)

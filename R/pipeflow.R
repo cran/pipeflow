@@ -51,9 +51,9 @@
     inherits(x, "pipeflow")
 }
 
-# A view is a pipeflow whose `rows` field is not NULL.
+# A view is a pipeflow whose `view` field is not NULL.
 .is_pipeflow_view <- function(x) {
-    inherits(x, "pipeflow") && !is.null(x[["view"]])
+    inherits(x, "pipeflow") && !is.null(.subset2(x, "view"))
 }
 
 .is_pipeflow_partitioned <- function(x) {
@@ -73,6 +73,31 @@
         stop("exec must be one of: ", toString(allowed))
     }
     invisible(exec)
+}
+
+#' Warn about params that are shadowed by the defaults of a step function
+#'
+#' The defaults of `fun` take precedence over `params` when both are merged,
+#' so values given in `params` for names that are also formals of `fun` are
+#' dropped. `...` is not counted as a formal.
+#'
+#' @param step The name of the step (used in the message).
+#' @param fun The step function.
+#' @param params Named list of parameter values passed to the step.
+#' @return The overlapping names, invisibly. Signals a warning if there are any.
+#' @noRd
+.warn_params_overlap <- function(step, fun, params) {
+    overlap <- intersect(names(params), setdiff(names(formals(fun)), "..."))
+    if (length(overlap) > 0L) {
+        warning(
+            "step '",
+            step,
+            "': the defaults of fun take precedence over params: ",
+            toString(overlap),
+            call. = FALSE
+        )
+    }
+    invisible(overlap)
 }
 
 .assert_logger <- function(lgr) {
@@ -120,7 +145,8 @@
 
 # Outer pipeline env wrapper that allows to create views as copied objects with
 # different names and view specifications, while sharing (i.e. pointing to) the
-# same underlying pipeline environment.
+# same underlying pipeline environment. The `view` of a view holds the node ids
+# of the covered steps (see `.pip_rows_to_view()`).
 .wrap_pipenv <- function(pipenv, name, view = NULL) {
     structure(
         list(name = name, view = view, pipenv = pipenv),
@@ -128,13 +154,27 @@
     )
 }
 
-# Wrap a step function so that `.self` is available in its body. The wrapper
-# gets its own environment holding the pipeline reference, so the original
-# function object is never mutated.
+#' Provide `.self` to a step function that refers to it
+#'
+#' If the body of `fun` contains the name `.self` (also within functions
+#' defined in the body), a copy of `fun` is returned whose environment is a
+#' new child of the environment of `fun`, holding `self` as `.self`. `fun`
+#' and its environment are not changed. Other functions are returned as they
+#' are, so their outputs don't keep a reference to the pipeline. Indirect
+#' access, such as `get(".self")`, is not detected.
+#'
+#' @param fun The step function.
+#' @param self The pipeflow pipeline that `.self` refers to.
+#' @return `fun`, or a copy of it that sees `self` as `.self`.
+#' @noRd
 .wrap_self <- function(fun, self) {
+    if (!(".self" %in% all.names(body(fun)))) {
+        return(fun)
+    }
     env <- new.env(parent = environment(fun))
     env[[".self"]] <- self
-    eval(call("function", formals(fun), body(fun)), envir = env)
+    environment(fun) <- env
+    fun
 }
 
 # ------------------------------
@@ -235,6 +275,131 @@
     x
 }
 
+#' Create a step error condition
+#'
+#' Error signalled by `.pip_run_row()` when a step function fails. It keeps
+#' the original condition as `parent`.
+#'
+#' @param step The name of the failed step.
+#' @param parent The original condition raised by the step function.
+#' @return A condition of class
+#' `c("pipeflow_step_error", "error", "condition")` with the message
+#' `"step '<step>': <message of parent>"` and the fields `step` and `parent`.
+#' @noRd
+.pip_step_error <- function(step, parent) {
+    structure(
+        class = c("pipeflow_step_error", "error", "condition"),
+        list(
+            message = sprintf("step '%s': %s", step, conditionMessage(parent)),
+            call = NULL,
+            step = step,
+            parent = parent
+        )
+    )
+}
+
+#' Create a partition key error condition
+#'
+#' Error signalled by `.pip_execute_step_call()` when a step function fails
+#' for one key of its partitioned inputs. It keeps the original condition as
+#' `parent`.
+#'
+#' @param key The partition key for which the step function failed.
+#' @param parent The original condition raised by the step function.
+#' @return A condition of class
+#' `c("pipeflow_key_error", "error", "condition")` with the message
+#' `"key '<key>': <message of parent>"` and the fields `key` and `parent`.
+#' @noRd
+.pip_key_error <- function(key, parent) {
+    structure(
+        class = c("pipeflow_key_error", "error", "condition"),
+        list(
+            message = sprintf("key '%s': %s", key, conditionMessage(parent)),
+            call = NULL,
+            key = key,
+            parent = parent
+        )
+    )
+}
+
+#' Create a failure object
+#'
+#' Failure object for the output of `step` in a run that continues after
+#' errors. It is passed to the step arguments whose reference is wrapped in
+#' `try()`, e.g. `x = ~try(step)`.
+#'
+#' @param step The step whose output the failure object replaces.
+#' @param parent The original condition of the step that actually failed.
+#' @param failedStep The step that actually failed. If it differs from
+#' `step`, `step` was not run because of it.
+#' @return A condition of class
+#' `c("pipeflow_failure", "error", "condition")` with the fields `step`,
+#' `failed_step` and `parent`.
+#' @noRd
+.pip_failure <- function(step, parent, failedStep = step) {
+    msg <- sprintf(
+        "step '%s' failed: %s",
+        failedStep,
+        conditionMessage(parent)
+    )
+    if (step != failedStep) {
+        msg <- sprintf("step '%s' was not run: %s", step, msg)
+    }
+    structure(
+        class = c("pipeflow_failure", "error", "condition"),
+        list(
+            message = msg,
+            call = NULL,
+            step = step,
+            failed_step = failedStep,
+            parent = parent
+        )
+    )
+}
+
+#' Create the warning of a run that continued after errors
+#'
+#' @param pipname The name of the pipeline (used in the message).
+#' @param failures Named list of the failure objects of the run (see
+#' `.pip_failure()`), by step name.
+#' @return A condition of class
+#' `c("pipeflow_run_failed", "warning", "condition")` with the fields
+#' `failed` (named list of the original conditions of the failed steps) and
+#' `skipped` (names of the steps not run because an input failed).
+#' @noRd
+.pip_run_failed_warning <- function(pipname, failures) {
+    failedSteps <- vapply(failures, \(f) f[["failed_step"]], FUN.VALUE = "")
+    isFailed <- names(failures) == failedSteps
+    failed <- lapply(failures[isFailed], \(f) f[["parent"]])
+    skipped <- names(failures)[!isFailed]
+
+    msg <- sprintf(
+        "Run of pipeline '%s' continued after %d failed step%s:\n%s",
+        pipname,
+        length(failed),
+        if (length(failed) == 1L) "" else "s",
+        paste0(
+            "  '",
+            names(failed),
+            "': ",
+            vapply(failed, conditionMessage, FUN.VALUE = ""),
+            collapse = "\n"
+        )
+    )
+    if (length(skipped) > 0L) {
+        msg <- paste0(
+            msg,
+            "\nSteps not run because an input failed: ",
+            paste0("'", skipped, "'", collapse = ", ")
+        )
+    }
+
+    structure(
+        class = c("pipeflow_run_failed", "warning", "condition"),
+        list(message = msg, call = NULL, failed = failed, skipped = skipped)
+    )
+}
+
 .pip_execute_step_call <- function(fun, args, exec) {
     # A partitioned argument is a list of per-key values produced by a
     # step with exec = "split" and tagged with class "pipeflow_partitioned".
@@ -258,9 +423,19 @@
     }
 
     # Reduce mode: combines partitioned inputs in a single call,
-    # so it needs at least one partitioned input to be meaningful.
+    # so it needs at least one partitioned input to be meaningful. A failure
+    # object counts as one, because a failed split step yields a single
+    # failure instead of a partitioned output.
     if (exec == "reduce" && length(partIdx) == 0L) {
-        stop("reduce mode requires at least one partitioned input")
+        hasFailure <- any(vapply(
+            args,
+            FUN = inherits,
+            what = "pipeflow_failure",
+            FUN.VALUE = logical(1)
+        ))
+        if (!hasFailure) {
+            stop("reduce mode requires at least one partitioned input")
+        }
     }
 
     # Single-call, which happens in three scenarios:
@@ -296,7 +471,7 @@
         out[[key]] <- tryCatch(
             expr = do.call(fun, args = keyArgs),
             error = function(e) {
-                stop_no_call("key '", key, "': ", e$message)
+                stop(.pip_key_error(key, parent = e))
             }
         )
     }
@@ -304,7 +479,9 @@
     .as_pipeflow_partitioned(out)
 }
 
-.pip_run_row <- function(x, i, lgr) {
+# `failed` is an optional named list of failure objects that replace the
+# outputs of the referenced steps for the respective arguments.
+.pip_run_row <- function(x, i, lgr, failed = list()) {
     if (!.is_pipeflow(x)) {
         stop("x must be a pipeflow pip")
     }
@@ -324,15 +501,21 @@
         refsOut <- .pip_filter(x, on = "step", values = depends)[["out"]]
         args[names(depends)] <- refsOut
     }
+    args[names(failed)] <- failed
 
     step <- dat[["step"]][[i]]
 
-    # Keep `.self` pointing at the pipeline object being run, so steps still
-    # reference the correct pipeline after cloning, subsetting or replacing.
-    environment(fun)[[".self"]] <- x
+    # Provide `.self` (the full pipeline being run) to a step function that
+    # refers to it, in an environment of its own for this call.
+    fun <- .wrap_self(fun, self = x)
+
+    unbound <- dat[["unbound"]][[i]]
 
     out <- withCallingHandlers(
-        .pip_execute_step_call(fun = fun, args = args, exec = exec),
+        {
+            args <- .pip_unwrap_params(args, unbound)
+            .pip_execute_step_call(fun = fun, args = args, exec = exec)
+        },
         error = function(e) {
             data.table::set(
                 dat,
@@ -341,7 +524,7 @@
                 value = .step_states[["failed"]][["name"]]
             )
             lgr(level = "error", msg = e$message)
-            stop_no_call(e$message)
+            stop(.pip_step_error(step, parent = e))
         },
         warning = function(w) {
             lgr(level = "warn", msg = w$message)
@@ -390,20 +573,46 @@
         return(invisible())
     }
 
-    pipenv[[".run_state"]][] <- "restart"
+    pipenv[[".run_state"]][] <- .run_states[["restart"]][["name"]]
     pipenv[[".restart_count"]] <- count + 1L
     pipenv[[".restart_force"]] <- force
     invisible()
 }
 
 .pip_halt <- function(pipenv) {
-    pipenv[[".run_state"]][] <- "halted"
+    pipenv[[".run_state"]][] <- .run_states[["halted"]][["name"]]
     invisible()
 }
 
-.pip_update_downstream <- function(x, steps, what, value) {
-    nodes <- .pip_get_reachable_nodes(x, steps)
-    .pip_pipenv(x)[["data"]][list(nodes), (what) := value, on = "nodeId"]
+#' Mark steps and their downstream steps as outdated
+#'
+#' Marks `steps` and all steps downstream of them as `"outdated"`, except for
+#' the steps in `keep`. Steps in state `"new"` have never run, so they stay
+#' `"new"`.
+#'
+#' @param x A pipeflow pipeline or view.
+#' @param steps Character vector of step names. Unknown steps are ignored.
+#' @param keep Character vector of step names whose state is not changed.
+#' @return `x`, invisibly. The step states are updated in place.
+#' @noRd
+.pip_outdate_downstream <- function(x, steps, keep = character()) {
+    nodes <- unique(as.integer(unlist(.pip_get_reachable_nodes(x, steps))))
+    if (length(nodes) == 0L) {
+        return(invisible(x))
+    }
+
+    dat <- .pip_pipenv(x)[["data"]]
+    rows <- dat[list(nodes), which = TRUE, on = "nodeId", nomatch = NULL]
+    isNew <- dat[["state"]][rows] == .step_states[["new"]][["name"]]
+    rows <- rows[!isNew & !(dat[["step"]][rows] %in% keep)]
+    if (length(rows) > 0L) {
+        data.table::set(
+            dat,
+            i = rows,
+            j = "state",
+            value = .step_states[["outdated"]][["name"]]
+        )
+    }
 
     invisible(x)
 }
@@ -418,15 +627,100 @@
     .subset2(x, "pipenv")
 }
 
-# The rows covered by `x`: all pipeline rows for a full pipeline, or the
-# view's `rows` selector for a view.
+#' Get the DAG of a pipeline
+#'
+#' All access to the DAG goes through this function. The DAG lives in C++
+#' behind an external pointer, which `saveRDS()` stores as a null pointer.
+#' In that case the DAG is rebuilt from the step table (see
+#' `.pip_dag_restore()`) and stored in `pipenv`, so the pipeline and all
+#' views on it use the rebuilt DAG from then on.
+#'
+#' @param pipenv The inner pipeline environment.
+#' @return The external pointer to the DAG.
+#' @noRd
+.pip_dag <- function(pipenv) {
+    d <- pipenv[[".dag"]]
+    if (dag_is_null(d)) {
+        d <- .pip_dag_restore(pipenv)
+        pipenv[[".dag"]] <- d
+    }
+    d
+}
+
+#' Rebuild the DAG of a pipeline from its step table
+#'
+#' The nodes are the ids of the `nodeId` column, kept as they are since views
+#' refer to them, in the order of the rows, which is the topological order.
+#' The edges come from the `depends` column. The ids of removed steps are not
+#' reused, as `dag_restore()` takes the number of ids from the (null) pointer.
+#'
+#' @param pipenv The inner pipeline environment.
+#' @return An external pointer to the rebuilt DAG.
+#' @noRd
+.pip_dag_restore <- function(pipenv) {
+    dat <- pipenv[["data"]]
+    steps <- dat[["step"]]
+    ids <- as.integer(dat[["nodeId"]])
+
+    # Other functions find the nodes of steps via the step->node map, so it
+    # must match the step table.
+    stepsToNodes <- pipenv[[".steps_to_nodes"]]
+    mapped <- mget(
+        steps,
+        envir = stepsToNodes,
+        ifnotfound = NA_integer_,
+        inherits = FALSE
+    )
+    if (
+        length(stepsToNodes) != length(steps) ||
+            !identical(as.integer(unlist(mapped, use.names = FALSE)), ids)
+    ) {
+        stop_no_call(
+            "cannot rebuild the pipeline DAG: the step to node map does not ",
+            "match the step table"
+        )
+    }
+
+    from <- lapply(
+        dat[["depends"]],
+        FUN = \(dep) unique(ids[data.table::chmatch(unname(dep), steps)])
+    )
+    to <- rep.int(ids, lengths(from))
+    from <- as.integer(unlist(from))
+    if (anyNA(from)) {
+        stop_no_call(
+            "cannot rebuild the pipeline DAG: steps depend on unknown steps"
+        )
+    }
+
+    dag_restore(pipenv[[".dag"]], order = ids, from = from, to = to)
+}
+
+#' Build the view selector for rows of the step table
+#'
+#' Returns the node ids of the steps in the given rows. Unlike row numbers,
+#' node ids don't change when steps are added, removed, renamed or replaced,
+#' and they are never reused, so a view keeps covering its steps.
+#'
+#' @param pipenv The inner pipeline environment.
+#' @param rows Absolute row indices of the step table.
+#' @return An integer vector of node ids, to be used as the `view` of
+#' `.wrap_pipenv()`.
+#' @noRd
+.pip_rows_to_view <- function(pipenv, rows) {
+    as.integer(pipenv[["data"]][["nodeId"]][rows])
+}
+
+# The rows covered by `x`: all pipeline rows for a full pipeline, or the rows
+# of the steps in the view's selector (in pipeline order) for a view. Steps
+# that were removed from the pipeline are no longer covered.
 .pip_view_rows <- function(x) {
     view <- .subset2(x, "view")
+    nodeIds <- .pip_pipenv(x)[["data"]][["nodeId"]]
     if (is.null(view)) {
-        seq_len(nrow(.pip_pipenv(x)[["data"]]))
-    } else {
-        as.integer(view)
+        return(seq_along(nodeIds))
     }
+    which(nodeIds %in% view)
 }
 
 .pip_view_data <- function(x) {
@@ -608,9 +902,9 @@
     }
 
     if (downstream) {
-        dag_get_reachable_nodes_down(env[[".dag"]], start_ids)
+        dag_get_reachable_nodes_down(.pip_dag(env), start_ids)
     } else {
-        dag_get_reachable_nodes_up(env[[".dag"]], start_ids)
+        dag_get_reachable_nodes_up(.pip_dag(env), start_ids)
     }
 }
 
@@ -622,9 +916,6 @@
 .pip_append <- function(x, step, fun, tags, exec = "auto", params = list()) {
     funParams <- .extract_fun_params(fun)
     params[names(funParams)] <- funParams
-
-    # Provide `.self` to the step via a dedicated wrapper environment.
-    fun <- .wrap_self(fun, x)
 
     # Determine and verify potential links to existing steps
     env <- .pip_pipenv(x)
@@ -647,10 +938,10 @@
     }
 
     # Update DAG
-    d <- env[[".dag"]]
+    d <- .pip_dag(env)
     nodeId <- as.integer(dag_add_node(d))
     if (length(refNodes) > 0) {
-        dag_add_edges_to(d, from = as.integer(refNodes), to = nodeId)
+        dag_add_edges_to(d, from = unique(as.integer(refNodes)), to = nodeId)
     }
 
     # Create and append step
@@ -680,9 +971,6 @@
 .pip_insert <- function(x, step, fun, tags, exec, params, pos) {
     funParams <- .extract_fun_params(fun)
     params[names(funParams)] <- funParams
-
-    # Provide `.self` to the step via a dedicated wrapper environment.
-    fun <- .wrap_self(fun, x)
 
     env <- .pip_pipenv(x)
     data <- env[["data"]]
@@ -722,10 +1010,10 @@
     }
 
     # Update DAG: add the node at the insertion position of its order
-    d <- env[[".dag"]]
+    d <- .pip_dag(env)
     nodeId <- as.integer(dag_add_node_at(d, pos))
     if (length(refNodes) > 0) {
-        dag_add_edges_to(d, from = as.integer(refNodes), to = nodeId)
+        dag_add_edges_to(d, from = unique(as.integer(refNodes)), to = nodeId)
     }
 
     # Create the new step and insert its row after the first `pos` steps
@@ -778,11 +1066,11 @@
     }
 
     # Append all (potentially renamed) steps of y in one pass: transform each
-    # row (re-create the formula dependencies after renaming and re-bind
-    # `.self` to the target), allocate a fresh node id, wire the DAG edges,
-    # and collect the rows for a single rbindlist.
+    # row (re-create the formula dependencies after renaming), allocate a
+    # fresh node id, wire the DAG edges, and collect the rows for a single
+    # rbindlist.
     outEnv <- .pip_pipenv(out)
-    d <- outEnv[[".dag"]]
+    d <- .pip_dag(outEnv)
     stepsToNodes <- outEnv[[".steps_to_nodes"]]
     rows <- vector("list", nrow(yyDat))
     for (k in seq_len(nrow(yyDat))) {
@@ -794,9 +1082,15 @@
         depends <- yyDat[["depends"]][[k]]
 
         # Re-create the formula dependencies in the target pipeline's context
-        # so that they point to the (renamed) steps of y.
+        # so that they point to the (renamed) steps of y. References wrapped
+        # in try() stay wrapped.
+        tryArgs <- formula_try_args(params)
         for (arg in intersect(names(depends), names(params))) {
-            params[[arg]] <- stats::as.formula(paste("~", depends[[arg]]))
+            ref <- depends[[arg]]
+            if (arg %in% tryArgs) {
+                ref <- sprintf("try(%s)", ref)
+            }
+            params[[arg]] <- stats::as.formula(paste("~", ref))
         }
         # Fold current parameter values into the defaults of the existing
         # function arguments.
@@ -805,8 +1099,6 @@
             fml[[nm]] <- params[[nm]]
         }
         formals(fun) <- fml
-
-        fun <- .wrap_self(fun, out)
 
         # Update DAG: allocate the node, register the step, add edges to its
         # upstream steps (which are either in `out` or already appended).
@@ -818,7 +1110,7 @@
                 envir = stepsToNodes,
                 inherits = FALSE
             )))
-            dag_add_edges_to(d, from = refNodes, to = nodeId)
+            dag_add_edges_to(d, from = unique(refNodes), to = nodeId)
         }
 
         row <- .new_step(step, fun, params, depends, nodeId, tags, exec)
@@ -856,6 +1148,16 @@
 #' @param name The name of the pipeline used for display and logging.
 #' @return A pipeflow pipeline object.
 #'
+#' @section Saving pipelines:
+#' A pipeline can be saved with [saveRDS()] and read back with [readRDS()]
+#' (or serialized in other ways, e.g. to send it to another R process), with
+#' its steps, parameters, outputs and states. The dependency graph of the
+#' steps is kept outside of R and is not saved, but it is rebuilt from the
+#' steps the first time it is needed. Views that are saved in the same object
+#' as their pipeline, as in `saveRDS(list(p, v), file)`, are read as views of
+#' the read pipeline. A view that is saved on its own is read with its own
+#' copy of the pipeline.
+#'
 #' @examples
 #' p <- pip_new("demo") |>
 #'     pip_add("numbers", \(n = 5) seq_len(n)) |>
@@ -869,6 +1171,14 @@
 #' # Inner pipeline environment (for advanced usage)
 #' ls(p[["pipenv"]])                # shows "data"
 #' ls(p[["pipenv"]], all = TRUE)    # also shows hidden variables
+#'
+#' # Save the pipeline and read it back
+#' file <- tempfile(fileext = ".rds")
+#' saveRDS(p, file)
+#' p2 <- readRDS(file)
+#' pip_run(p2)
+#' p2
+#' unlink(file)
 #' @export
 pip_new <- function(name = "pipe") {
     if (!.is_single(name, "character")) {
@@ -888,8 +1198,8 @@ pip_new <- function(name = "pipe") {
 
     # Pipeline states
     env[[".run_state"]] <- factor(
-        "ready",
-        levels = c("ready", "restart", "running", "halted", "failed")
+        .run_states[["ready"]][["name"]],
+        levels = names(.run_states)
     )
     env[[".last_run"]] <- NULL
 
@@ -917,7 +1227,13 @@ pip_new <- function(name = "pipe") {
 #' have a default value. Default values that are simple constants are resolved
 #' immediately. Default values that are formulas like `~other_step` are
 #' treated as dependencies to those steps and resolved to the respective output
-#' values at runtime once the step is executed.
+#' values at runtime once the step is executed. A reference wrapped in `try()`,
+#' like `~try(other_step)`, accepts a failed input when the pipeline is run
+#' with `on_error = "continue"`: instead of the output of the referenced step,
+#' the argument then receives a condition of class `pipeflow_failure` (see
+#' section 'Continuing after errors' in [pip_run()]). The function can refer
+#' to the running pipeline as `.self` (see section 'The pipeline as `.self`'
+#' in [pip_add()]).
 #' @param tags Optional character vector of tags belonging to the step.
 #' Can also be adjusted later using `[pip_tag()]`.
 #' @param after Optional position after which the new step should be inserted
@@ -939,10 +1255,13 @@ pip_new <- function(name = "pipe") {
 #' partition-wise during step execution. The `reduce` mode expects
 #' partitioned input and passes it through without mapping, while `plain`
 #' mode only accepts non-partitioned input and always intends to execute
-#' a single call. In summary:
+#' a single call. If a split pipeline fails in a run with
+#' `on_error = "continue"`, a `reduce` step also accepts the resulting failure
+#' object when it takes it via `~try()`. In summary:
 #' * auto: map if partitioned input appears, otherwise single call
 #' * split: single call, then mark output as partitioned
-#' * reduce: single call, but only valid with partitioned input
+#' * reduce: single call, but only valid with partitioned input or, via
+#'   `~try()`, a failure object
 #' * plain: single call, only valid with non-partitioned input
 #'
 #' @details
@@ -951,6 +1270,17 @@ pip_new <- function(name = "pipe") {
 #' inserting a step in the middle is a rather expensive operation as it
 #' requires re-wiring parts of the internal pipeline structure, especially
 #' if the new step is inserted at an early position.
+#'
+#' ## The pipeline as `.self`
+#' A step function can refer to the pipeline that is being run as `.self`
+#' without declaring it as an argument, for example to set parameters or add
+#' steps at runtime, or to call `.self$restart()` or `.self$halt()` (see
+#' [pip_run()]). `.self` is always the full pipeline, also when a view is
+#' run. pipeflow provides it each time the step runs, but only if the body of
+#' the step function contains the name `.self` (also within functions defined
+#' in the body). Indirect access, such as `get(".self")`, is not detected.
+#' `.self` is a reserved name: it can't be an argument of `fun` or a name in
+#' `params`.
 #'
 #' @return The updated pipeline, invisibly.
 #' @examples
@@ -1028,9 +1358,18 @@ pip_add <- function(
     if (!is.function(fun)) {
         stop("fun must be a function")
     }
+    if (is.primitive(fun)) {
+        stop(
+            "fun must not be a primitive function; wrap it, ",
+            "e.g. \\(x = 1) sum(x)"
+        )
+    }
     if (".self" %in% names(formals(fun))) {
         stop_no_call(
-            "'.self' is a reserved parameter and cannot be used as a step name"
+            "'.self' is a reserved parameter name and must not be declared ",
+            "in step '",
+            step,
+            "' - it is provided automatically"
         )
     }
     if (".self" %in% names(params)) {
@@ -1039,6 +1378,7 @@ pip_add <- function(
         )
     }
     .assert_exec_mode(exec)
+    .warn_params_overlap(step, fun, params)
 
     n <- length(x)
 
@@ -1133,7 +1473,7 @@ pip_clone <- function(x, name = NULL) {
     out <- pip_new(name = newName)
     env <- .pip_pipenv(out)
 
-    env[[".dag"]] <- dag_clone(.pip_pipenv(x)[[".dag"]])
+    env[[".dag"]] <- dag_clone(.pip_dag(.pip_pipenv(x)))
     dat <- data.table::copy(.pip_pipenv(x)[["data"]])
 
     # Clone steps to nodes mapping
@@ -1428,7 +1768,6 @@ pip_graph <- function(x, include_upstream = FALSE) {
     isView <- .is_pipeflow_view(x)
     env <- .pip_pipenv(x)
     dat <- env[["data"]]
-    dag <- env[[".dag"]]
 
     rows <- .pip_view_rows(x)
     rows <- sort(unique(rows))
@@ -1436,7 +1775,7 @@ pip_graph <- function(x, include_upstream = FALSE) {
     if (isView && include_upstream && length(rows) > 0L) {
         startNodes <- dat[["nodeId"]][rows]
         keepNodes <- dag_get_reachable_nodes_up(
-            dag,
+            .pip_dag(env),
             as.integer(unique(startNodes))
         )
         rows <- which(dat[["nodeId"]] %in% keepNodes)
@@ -1524,21 +1863,15 @@ pip_get_graph <- function(x, include_upstream = FALSE) {
 #' together with all its downstream dependent steps.
 #'
 #' @note
-#' If called on a view, the step to be removed must be part of the view,
-#' since removing steps drops rows from the pipeline, the row positions
-#' of the view will be shifted after the removal operation.
-#' For views, you therefore need to assign the result back to the view:
-#' `v <- pip_remove(v, ...)`.
-#' Views that are not reassigned (or other views on the same pipeline),
-#' keep their old row positions and therefore can become invalid after a
-#' step removal.
+#' If called on a view, the step to be removed must be part of the view.
+#' The view, as well as any other view on the same pipeline, stays valid:
+#' the removed steps just drop out of it.
 #'
 #' @param x A pipeflow pip or view
 #' @param step `string` the name of the step to be removed.
 #' @param force `logical` if `TRUE` the step is removed together
 #' with all its downstream dependencies.
-#' @return The updated pipeline, invisibly. For a view, the view with its
-#' remapped selector.
+#' @return The updated pipeline or view, invisibly.
 #' @examples
 #' p <- pip_new() |>
 #'   pip_add("load", \(x = 1) x) |>
@@ -1555,8 +1888,11 @@ pip_get_graph <- function(x, include_upstream = FALSE) {
 #' # If a view is passed, the step must be part of the view.
 #' v <- pip_view(p, step = "transform")
 #' try(pip_remove(v, "load"))  # Error: "load" is not part of the view
-#' v <- pip_remove(v, "transform")
-#' v[["step"]]              # view is remapped and stays valid
+#'
+#' # Views stay valid, the removed steps just drop out of them
+#' v <- pip_view(p, step = c("load", "transform"))
+#' pip_remove(v, "transform")
+#' v[["step"]]              # "load"
 #' p                        # "load"
 #'
 #' # force = TRUE removes the step and all its downstream dependents
@@ -1584,12 +1920,6 @@ pip_remove <- function(x, step, force = FALSE) {
     pipenv <- .pip_pipenv(x)
     dat <- pipenv[["data"]]
     `%chin%` <- data.table::`%chin%`
-
-    # For views, remember the covered steps so that the view can be remapped.
-    isView <- .is_pipeflow_view(x)
-    if (isView) {
-        viewSteps <- dat[["step"]][.pip_view_rows(x)]
-    }
 
     directDeps <- dat[["step"]][
         vapply(
@@ -1636,14 +1966,15 @@ pip_remove <- function(x, step, force = FALSE) {
     )))
 
     # Remove DAG nodes first to keep node references stable during filtering.
+    d <- .pip_dag(pipenv)
     for (nid in rev(nodesToRemove)) {
-        ok <- dag_remove_node(pipenv[[".dag"]], nid, force = force)
+        ok <- dag_remove_node(d, nid, force = force)
         if (!ok) {
             stop("failed to remove node ", nid, " from DAG")
         }
     }
 
-    dag_tidy_up(pipenv[[".dag"]])
+    dag_tidy_up(d)
     keep <- !(dat[["step"]] %chin% stepsToRemove)
     pipenv[["data"]] <- dat[keep]
     suppressWarnings(
@@ -1655,13 +1986,6 @@ pip_remove <- function(x, step, force = FALSE) {
     )
 
     data.table::setindexv(pipenv[["data"]], list("step", "nodeId"))
-
-    # Remap the view to the shifted (and potentially dropped) row positions.
-    if (isView) {
-        remaining <- pipenv[["data"]][["step"]]
-        newRows <- as.integer(which(remaining %chin% viewSteps))
-        x <- .wrap_pipenv(pipenv, name = x[["name"]], view = newRows)
-    }
     invisible(x)
 }
 
@@ -1760,8 +2084,13 @@ pip_rename <- function(x, from, to) {
             fml <- newParams[[i]][[arg]]
             if (inherits(fml, "formula")) {
                 # Only swap the referenced name to keep the formula's
-                # environment (as.formula() would attach this frame).
-                fml[[2L]] <- as.name(dep[[arg]])
+                # environment (as.formula() would attach this frame) and
+                # a try() wrapper.
+                if (is_try_ref(fml)) {
+                    fml[[2L]][[2L]] <- as.name(dep[[arg]])
+                } else {
+                    fml[[2L]] <- as.name(dep[[arg]])
+                }
                 newParams[[i]][[arg]] <- fml
             }
         }
@@ -1784,11 +2113,22 @@ pip_rename <- function(x, from, to) {
 #' Replace a step
 #'
 #' Replaces a step's function while keeping it in the same position in the
-#' pipeline. Downstream steps are automatically marked as outdated and will
-#' re-run on the next [pip_run()].
+#' pipeline. Downstream steps that have run before are automatically marked as
+#' outdated and will re-run on the next [pip_run()].
+#'
+#' By default, the step keeps its tags and execution mode: `tags = NULL` and
+#' `exec = NULL` mean "keep the current value". To change them, pass explicit
+#' values, where `tags = character(0)` removes all tags and `exec = "auto"`
+#' resets the execution mode to its default. Parameters, output, state and
+#' lock status are always reset, like for a freshly added step.
 #'
 #' @inheritParams pip_add
 #' @param x A pipeflow pipeline or view object.
+#' @param tags Optional character vector of tags belonging to the step. If
+#' `NULL` (the default), the current tags of the step are kept. Use
+#' `character(0)` to remove all tags.
+#' @param exec Execution mode for the step, see [pip_add()]. If `NULL` (the
+#' default), the current execution mode of the step is kept.
 #' @return The updated pipeline, invisibly.
 #' @examples
 #' p <- pip_new() |>
@@ -1811,14 +2151,21 @@ pip_rename <- function(x, from, to) {
 #' p[["state"]]                                # "double" is "new" again
 #'
 #' try(pip_replace(v, "load", \(n = 2) seq_len(n)))
+#'
+#' # Tags and execution mode are kept unless set explicitly
+#' pip_tag(p, "io")
+#' pip_replace(p, "load", \(n = 4) seq_len(n))
+#' p[, "tags"]
+#' pip_replace(p, "load", \(n = 4) seq_len(n), tags = character(0))
+#' p[, "tags"]
 #' @export
 pip_replace <- function(
     x,
     step,
     fun,
-    tags = character(0),
+    tags = NULL,
     params = list(),
-    exec = "auto"
+    exec = NULL
 ) {
     .assert_pip_or_view(x)
     if (!.is_single(step, "character")) {
@@ -1839,6 +2186,12 @@ pip_replace <- function(
     if (!is.function(fun)) {
         stop("fun must be a function")
     }
+    if (is.primitive(fun)) {
+        stop(
+            "fun must not be a primitive function; wrap it, ",
+            "e.g. \\(x = 1) sum(x)"
+        )
+    }
     if (".self" %in% names(formals(fun))) {
         stop_no_call(
             "'.self' is a reserved parameter name and must not be declared ",
@@ -1853,17 +2206,25 @@ pip_replace <- function(
             "params - it is provided automatically"
         )
     }
-    .assert_exec_mode(exec)
+    if (!is.null(exec)) {
+        .assert_exec_mode(exec)
+    }
+    .warn_params_overlap(step, fun, params)
 
     env <- .pip_pipenv(x)
     data <- env[["data"]]
     iStep <- data.table::chmatch(step, data[["step"]])
 
+    # NULL means "keep the current value"
+    if (is.null(tags)) {
+        tags <- data[["tags"]][[iStep]]
+    }
+    if (is.null(exec)) {
+        exec <- data[["exec"]][[iStep]]
+    }
+
     funParams <- .extract_fun_params(fun)
     params[names(funParams)] <- funParams
-
-    # Provide `.self` to the step via a dedicated wrapper environment.
-    fun <- .wrap_self(fun, x)
 
     # Dependencies of the replacement may only point to earlier steps
     prefixSteps <- data[["step"]][seq_len(iStep - 1L)]
@@ -1884,22 +2245,12 @@ pip_replace <- function(
     refNodes <- mget(
         depends,
         envir = env[[".steps_to_nodes"]],
-        ifnotfound = NA_integer_,
         inherits = FALSE
     )
-    if (anyNA(refNodes)) {
-        notFound <- Filter(is.na, refNodes)
-        stop_no_call(
-            "while adding step '",
-            step,
-            "' - cannot reference unknown steps: ",
-            paste0("'", notFound, "'", collapse = ", ")
-        )
-    }
 
     # Update the incoming DAG edges of the replaced step (its node and all
     # outgoing edges stay the same).
-    d <- env[[".dag"]]
+    d <- .pip_dag(env)
     nodeId <- env[[".steps_to_nodes"]][[step]]
     oldDeps <- data[["depends"]][[iStep]]
     oldRefs <- if (length(oldDeps) > 0L) {
@@ -1921,8 +2272,8 @@ pip_replace <- function(
         dag_add_edges_to(d, from = toAdd, to = nodeId)
     }
 
-    # Reset the step row: new function, params, tags and exec, fresh runtime
-    # state (like a freshly added step).
+    # Reset the step row: new function and params, fresh runtime state (like
+    # a freshly added step), but with the given or kept tags and exec.
     values <- list(
         "fun" = list(fun),
         "params" = list(params),
@@ -1937,28 +2288,9 @@ pip_replace <- function(
     )
     data.table::set(data, i = iStep, j = names(values), value = values)
 
-    # Mark downstream dependent steps as outdated, but keep the replaced
-    # step itself as "new".
-    downNodes <- .pip_get_reachable_nodes(x, step)
-    downNodes <- unique(setdiff(
-        as.integer(unlist(downNodes)),
-        as.integer(nodeId)
-    ))
-    if (length(downNodes) > 0L) {
-        rowsDown <- data[
-            list(downNodes),
-            which = TRUE,
-            on = "nodeId"
-        ]
-        if (length(rowsDown) > 0L) {
-            data.table::set(
-                data,
-                i = rowsDown,
-                j = "state",
-                value = .step_states[["outdated"]][["name"]]
-            )
-        }
-    }
+    # Mark downstream dependent steps as outdated (the replaced step itself
+    # is "new" and therefore stays "new").
+    .pip_outdate_downstream(x, steps = step)
 
     invisible(x)
 }
@@ -1972,12 +2304,18 @@ pip_replace <- function(
 #' executed. Use `force = TRUE` to re-execute every step.
 #'
 #' @param x A pipeflow pip or view
-#' @param lgr A logging function of the form `function(level, msg, ...)`.
-#' To suppress logging, you can set `lgr = NULL`.
+#' @param lgr A logging function with the arguments `level` (`"info"`,
+#' `"warn"` or `"error"`) and `msg`, which is called as
+#' `lgr(level = level, msg = msg)`. The default is [pipeflow_lgr()], which
+#' can also be used to build custom loggers. To suppress logging, you can set
+#' `lgr = NULL`.
 #' @param force Logical indicating if all steps should be forced to run,
 #' regardless of whether they are outdated or not.
 #' @param progress Optional callback of the form
 #' `function(value, detail)` called before each step.
+#' @param on_error What to do when a step fails: `"stop"` (the default)
+#' aborts the run, `"continue"` goes on with all steps that do not depend on
+#' a failed step (see section 'Continuing after errors' below).
 #' @return The updated pipeline or view, invisibly.
 #'
 #' @details
@@ -1991,11 +2329,14 @@ pip_replace <- function(
 #' * outdated: a step can get outdated in the following scenarios:
 #'   - one of the step's parameters were changed (e.g. via [pip_set_params()])
 #'   - a step it depends on was re-executed or replaced
-#'   - the last run did not reach it either on purpose (see section 'Running
-#'     views below) or because a run was aborted early due to failed step
+#'   - a step it depends on was executed, but the run did not reach the step
+#'     itself, either on purpose (see section 'Running views' below) or
+#'     because the run was aborted early due to a failed step
 #' * done: the step was executed successfully with its current inputs
 #' * failed: the step raised an error during its last execution
 #'
+#' Only steps that have run before can become outdated: a step in state
+#' `"new"` stays `"new"` until it is executed.
 #' A "done" step is skipped unless `force = TRUE` was set. For all other
 #' states, the step will be re-executed in the next [pip_run()].
 #'
@@ -2003,21 +2344,68 @@ pip_replace <- function(
 #' When `x` is a view, the requested rows are run together with their
 #' upstream dependencies, so the steps covered by the view are brought up to
 #' date even if their inputs come from steps outside the view. The rest of
-#' the pipeline is not executed; downstream steps that were not processed
-#' are marked `"outdated"`.
+#' the pipeline is not executed; downstream steps of executed steps are
+#' marked `"outdated"`. Steps whose inputs were not re-executed (for example,
+#' because they were already `"done"`) keep their state.
 #'
 #' ## Runtime errors
 #' If a step fails with an error, the failing step's state is set to
 #' `"failed"`, the run is aborted (no further steps are executed), and the
-#' pipeline run state is set to `"failed"`. Steps that have not been
-#' executed are marked `"outdated"`, so a subsequent run retries them.
+#' pipeline run state is set to `"failed"`. Steps downstream of executed
+#' steps that were not reached are marked `"outdated"`, so a subsequent run
+#' retries them.
+#'
+#' The error is signalled as a condition of class
+#' `c("pipeflow_step_error", "error", "condition")`. Its message is the
+#' message of the original error, prefixed with `"step '<step>': "`. Its
+#' field `step` names the failed step and its field `parent` holds the
+#' original error condition with its class, which can be caught via
+#' `tryCatch(pip_run(p), pipeflow_step_error = function(e) e$parent)`.
+#' If the step was mapped over partitioned inputs (see `exec` in
+#' [pip_add()]), `parent` is a condition of class
+#' `c("pipeflow_key_error", "error", "condition")` instead. Its message is
+#' prefixed with `"key '<key>': "`, its field `key` names the failed
+#' partition key and its field `parent` holds the original error condition.
+#'
+#' ## Continuing after errors
+#' With `on_error = "continue"`, a failing step gets state `"failed"`, its
+#' error condition is stored as its output, and the run goes on. For a step
+#' mapped over partitioned inputs, the stored condition is the
+#' `pipeflow_key_error` described above. An input of a step is *failed* if
+#' its step failed or was not run because a step upstream of it failed in
+#' this run.
+#'
+#' * A step with a failed input is not run, and counts as failed for its own
+#'   dependents, unless the argument receiving that input refers to its step
+#'   via `try()`, e.g. `x = ~try(other_step)` (see [pip_add()]).
+#' * A step whose failed inputs all use `try()` references is run, and
+#'   each of these arguments receives a condition of class
+#'   `c("pipeflow_failure", "error", "condition")` with the fields
+#'   `message`, `step` (the step of the input), `failed_step` (the step that
+#'   actually failed) and `parent` (the original error condition).
+#' * Locked steps are the exception: they are never run, so a failed input
+#'   does not affect them. They keep their state and output, and their
+#'   dependents receive that output as usual.
+#'
+#' Steps that ran (including those that received failure objects) are
+#' `"done"`. Steps that were not run are treated like steps not reached by an
+#' aborted run: a `"done"` step becomes `"outdated"`, a `"new"` one stays
+#' `"new"`, so the next run retries them together with the failed steps.
+#' Once a failed step succeeds, the steps downstream of it, including those
+#' that received failure objects, are run again.
+#'
+#' If any step failed, the pipeline run state is set to `"continued"` and,
+#' once all states and outputs are stored, a warning of class
+#' `c("pipeflow_run_failed", "warning", "condition")` is signalled. Its
+#' field `failed` is a named list with the original conditions of the failed
+#' steps and its field `skipped` names the steps that were not run.
 #'
 #' ## Runtime control flow via restart and halt
 #'
 #' A running pipeline can be interrupted via the `restart()` and `halt()`
 #' virtual methods. They are intended for advanced, self-modifying pipelines
-#' and are most often called from within a step function via the `.self`
-#' argument.
+#' and are most often called from within a step function via `.self` (see
+#' section 'The pipeline as `.self`' in [pip_add()]).
 #'
 #' - `.self$restart(force = TRUE, times = 1L)`: aborts the current run after the
 #'   current step has finished and restarts it from the first step.
@@ -2031,12 +2419,11 @@ pip_replace <- function(
 #' - `p$halt()`: aborts the current run after the current step has finished.
 #'   This is a *controlled halt* and deliberately distinct from [base::stop()]:
 #'   no error is raised and the pipeline is not marked as `"failed"`. The run
-#'   simply ends, the steps that have not been executed are marked
-#'   `"outdated"`, and a subsequent [pip_run()] will continue where the run
-#'   left off.
+#'   simply ends with run state `"halted"` (see [pip_run_state()]) and a
+#'   subsequent [pip_run()] will continue where the run left off.
 #'
-#' In both cases steps that have not been executed until the restart or halt
-#' happens are marked as `"outdated"`.
+#' In both cases steps downstream of executed steps that have not been
+#' executed until the restart or halt happens are marked as `"outdated"`.
 #'
 #' @seealso `vignette("v06-self-modify-pipeline", package = "pipeflow")`
 #'   for an advanced example of dynamic pipelines.
@@ -2087,17 +2474,39 @@ pip_replace <- function(
 #'
 #' pip_set_params(p, list(n = 15)) # now halt() in 'check' step is triggered
 #' pip_run(p)
+#'
+#' # Continue after errors and pass failures to the steps that allow them
+#' p <- pip_new("continue") |>
+#'   pip_add("data", \(n = 5) seq_len(n)) |>
+#'   pip_add("check", \(x = ~data) stop("check failed")) |>
+#'   pip_add("count", \(x = ~check) length(x)) |>
+#'   pip_add("total", \(x = ~data) sum(x)) |>
+#'   pip_add("report", \(total = ~total, n = ~try(count)) {
+#'     if (inherits(n, "pipeflow_failure")) conditionMessage(n) else n
+#'   })
+#'
+#' withCallingHandlers(
+#'   pip_run(p, lgr = NULL, on_error = "continue"),
+#'   pipeflow_run_failed = \(w) {
+#'     message("failed: ", toString(names(w$failed)))
+#'     invokeRestart("muffleWarning")
+#'   }
+#' )
+#' p
+#' p[["report", "out"]]
 #' @export
 pip_run <- function(
     x,
     lgr = pipeflow_lgr,
     force = FALSE,
-    progress = NULL
+    progress = NULL,
+    on_error = c("stop", "continue")
 ) {
     .assert_pip_or_view(x)
     if (!.is_single(force, "logical")) {
         stop("force must be a single logical value")
     }
+    onError <- match.arg(on_error)
     if (!is.null(progress) && !is.function(progress)) {
         stop("progress must be a function")
     }
@@ -2128,62 +2537,84 @@ pip_run <- function(
         names(rowsToRun)[match(requested, rowsToRun)] <- "view"
         names(rowsToRun)[match(upstreamRows, rowsToRun)] <- "upstream"
     }
-    processedSteps <- character()
-    restartDelegated <- FALSE
-    on.exit({
-        # At the end, mark all downstream dependent steps as outdated that
-        # were *not* processed, which can happen in two different ways:
-        # a) when running a view that does not cover the entire pipeline or
-        # b) the run was aborted in the middle (due to an error or manual halt).
-        # When the run was restarted, a nested pip_run() has already handled
-        # the whole pipeline (including marking), so nothing to do here.
-        if (!restartDelegated) {
-            processedNodes <- as.integer(.pip_steps_to_nodes(x, processedSteps))
-            outdatedNodes <- .pip_get_reachable_nodes(x, processedSteps) |>
-                unlist() |>
-                unique() |>
-                setdiff(processedNodes)
-            if (length(outdatedNodes) > 0L) {
-                iOut <- dat[list(outdatedNodes), which = TRUE, on = "nodeId"]
-                if (length(iOut) > 0L) {
-                    data.table::set(
-                        dat,
-                        i = iOut,
-                        j = "state",
-                        value = "outdated"
-                    )
-                }
-            }
-        }
-    })
+    # Mark the steps downstream of the executed steps as outdated if they were
+    # not executed themselves, which can happen in two different ways:
+    # a) when running a view that does not cover the entire pipeline or
+    # b) the run was aborted in the middle (due to an error or manual halt).
+    # Steps downstream of steps that were only skipped keep their state, as
+    # do locked steps.
+    executedSteps <- character()
+
+    # Failure objects of the steps that failed or were not run because an
+    # input failed, by step name (only used with on_error = "continue").
+    failures <- list()
+    outdate_downstream_of_executed <- function() {
+        dat <- pipenv[["data"]]
+        locked <- dat[["step"]][dat[["locked"]]]
+        .pip_outdate_downstream(
+            x,
+            steps = executedSteps,
+            keep = c(executedSteps, locked)
+        )
+        executedSteps <<- character()
+    }
+    on.exit(outdate_downstream_of_executed())
 
     state <- pipenv[[".run_state"]]
-    action <- if (state == "restart") "Restarting" else "Starting"
+    isRestart <- state == .run_states[["restart"]][["name"]]
+    action <- if (isRestart) "Restarting" else "Starting"
     log_info(sprintf("%s run of %s '%s'", action, data.class(x), pipname))
-    pipenv[[".run_state"]][] <- "running"
+    pipenv[[".run_state"]][] <- .run_states[["running"]][["name"]]
+    halted <- FALSE
     tryCatch(
         {
             for (i in seq_along(rowsToRun)) {
                 row <- rowsToRun[[i]]
                 step <- dat[["step"]][[row]]
-                processedSteps <- c(processedSteps, step)
                 if (!is.null(progress)) {
                     progress(value = i, detail = step)
                 }
                 msg <- if (isView) {
                     marker <- names(rowsToRun)[[i]]
-                    sprintf(
-                        "Step %i/%i [%s] %s",
-                        i,
-                        length(rowsToRun),
-                        marker,
-                        step
-                    )
+                    # fmt: skip
+                    sprintf("Step %i/%i [%s] %s", i, length(rowsToRun), marker, step) # nolint
                 } else {
                     sprintf("Step %i/%i %s", i, length(rowsToRun), step)
                 }
 
-                if (dat[["state"]][[row]] == "done" && !force) {
+                # Arguments whose input step failed or was not run in this
+                # run (only possible with on_error = "continue"). Unless all
+                # of them refer to their step via try(), the step is not run
+                # and counts as failed for its own dependents.
+                depends <- dat[["depends"]][[row]]
+                failedArgs <- names(depends)[depends %in% names(failures)]
+                hasFailedInput <- length(failedArgs) > 0L &&
+                    !dat[["locked"]][[row]]
+                if (hasFailedInput) {
+                    tryArgs <- formula_try_args(dat[["params"]][[row]])
+                    notAllowed <- setdiff(failedArgs, tryArgs)
+                    if (length(notAllowed) > 0L) {
+                        cause <- failures[[depends[[notAllowed[[1L]]]]]]
+                        failures[[step]] <- .pip_failure(
+                            step,
+                            parent = cause[["parent"]],
+                            failedStep = cause[["failed_step"]]
+                        )
+                        log_info(sprintf(
+                            "%s - skipping step, input '%s' failed",
+                            msg,
+                            notAllowed[[1L]]
+                        ))
+                        next()
+                    }
+                }
+
+                # A done step is re-run if one of its inputs was executed in
+                # this run, since its output may then be stale.
+                inputsChanged <- hasFailedInput ||
+                    any(depends %in% executedSteps)
+                isDone <- dat[["state"]][[row]] == "done"
+                if (isDone && !force && !inputsChanged) {
                     log_info(sprintf("%s - skipping done step", msg))
                     next()
                 }
@@ -2195,27 +2626,68 @@ pip_run <- function(
                 # Always pass the full pipeline object (not a view) to the
                 # step function, so that it can modify itself if needed.
                 self <- .wrap_pipenv(pipenv, pipname, view = NULL)
-
                 log_info(msg)
-                .pip_run_row(x = self, i = row, lgr = lgr)
+
+                # Take the name from the current data, since a step that
+                # modified the pipeline may have shifted the rows.
+                execStep <- pipenv[["data"]][["step"]][[row]]
+                executedSteps <- c(executedSteps, execStep)
+
+                # Prepare the list of failed inputs for the current step.
+                failed <- stats::setNames(
+                    failures[unname(depends[failedArgs])],
+                    failedArgs
+                )
+                cond <- tryCatch(
+                    {
+                        # fmt: skip
+                        .pip_run_row(x = self, i = row, lgr = lgr, failed = failed) # nolint
+                        NULL
+                    },
+                    pipeflow_step_error = function(e) {
+                        if (onError == "stop") {
+                            stop(e)
+                        }
+                        e[["parent"]]
+                    }
+                )
+
+                # Keep the condition of a failed step as its output and
+                # continue with the next step.
+                if (!is.null(cond)) {
+                    failures[[execStep]] <- .pip_failure(execStep, cond)
+                    datNow <- pipenv[["data"]]
+                    data.table::set(
+                        datNow,
+                        i = data.table::chmatch(execStep, datNow[["step"]]),
+                        j = "out",
+                        value = list(list(cond))
+                    )
+                }
                 stateAfterStep <- pipenv[[".run_state"]]
 
                 # Check for restart or stop signals
-                if (stateAfterStep == "restart") {
+                if (stateAfterStep == .run_states[["restart"]][["name"]]) {
                     log_info("Restarting pipeline execution.")
                     doForce <- pipenv[[".restart_force"]]
-                    restartDelegated <- TRUE
+
+                    # Mark what has run so far before handing the remaining
+                    # work to a nested run, which then re-runs the outdated
+                    # steps and does its own marking at the end.
+                    outdate_downstream_of_executed()
                     pip_run(
                         x,
                         lgr = lgr,
                         force = doForce,
-                        progress = progress
+                        progress = progress,
+                        on_error = onError
                     )
                     return(invisible(x))
                 }
 
-                if (stateAfterStep == "halted") {
+                if (stateAfterStep == .run_states[["halted"]][["name"]]) {
                     log_info("Aborting pipeline execution on manual halt.")
+                    halted <- TRUE
                     break
                 }
             }
@@ -2223,16 +2695,39 @@ pip_run <- function(
             log_info(
                 sprintf("Finished run of %s '%s'", data.class(x), pipname)
             )
-            pipenv[[".run_state"]][] <- "ready"
+            runState <- if (halted) {
+                "halted"
+            } else if (length(failures) > 0L) {
+                "continued"
+            } else {
+                "ready"
+            }
+            pipenv[[".run_state"]][] <- .run_states[[runState]][["name"]]
             pipenv[[".last_run"]] <- Sys.time()
-            invisible(x)
         },
         error = function(e) {
-            pipenv[[".run_state"]][] <- "failed"
+            pipenv[[".run_state"]][] <- .run_states[["failed"]][["name"]]
             pipenv[[".last_run"]] <- Sys.time()
+
+            # Re-signal step errors as they are, so that callers can get the
+            # failed step and its original condition.
+            if (inherits(e, "pipeflow_step_error")) {
+                stop(e)
+            }
             stop_no_call(e$message)
         }
     )
+
+    # Report the failures of a continued run once all states are final, so
+    # that condition handlers already see them.
+    if (length(failures) > 0L) {
+        outdate_downstream_of_executed()
+        w <- .pip_run_failed_warning(pipname, failures)
+        lgr(level = "warn", msg = conditionMessage(w))
+        warning(w)
+    }
+
+    invisible(x)
 }
 
 
@@ -2299,7 +2794,7 @@ pip_reset <- function(x) {
         )
     )
 
-    env[[".run_state"]][] <- "ready"
+    env[[".run_state"]][] <- .run_states[["ready"]][["name"]]
     env[[".restart_count"]] <- 0L
     env[[".last_run"]] <- NULL
 
@@ -2307,21 +2802,147 @@ pip_reset <- function(x) {
 }
 
 
+#' Get the run state of a pipeline
+#'
+#' Returns the state of the last (or current) run of a pipeline. Views share
+#' the run state of their pipeline.
+#'
+#' @details The run state is one of
+#' * `"ready"`: the pipeline is new, was reset, or its last run finished
+#'   without failures.
+#' * `"running"`: a run is in progress (seen from within a step).
+#' * `"restart"`: a step requested a restart, which [pip_run()] carries out
+#'   right after the step.
+#' * `"halted"`: a step halted the run (see section 'Runtime control flow
+#'   via restart and halt' in [pip_run()]).
+#' * `"failed"`: the last run stopped on an error (`on_error = "stop"`).
+#' * `"continued"`: the last run had failed steps but went on
+#'   (`on_error = "continue"`).
+#'
+#' [pip_reset()] sets the run state back to `"ready"`.
+#'
+#' @param x A pipeflow pip or view.
+#' @return A single character string.
+#' @seealso [pip_run()], [pip_reset()]
+#' @examples
+#' p <- pip_new() |>
+#'   pip_add("load", \(n = 3) seq_len(n)) |>
+#'   pip_add("fail", \(x = ~load) stop("boom"))
+#'
+#' pip_run_state(p) # "ready"
+#' try(pip_run(p, lgr = NULL))
+#' pip_run_state(p) # "failed"
+#'
+#' suppressWarnings(pip_run(p, on_error = "continue", lgr = NULL))
+#' pip_run_state(p) # "continued"
+#'
+#' pip_reset(p)
+#' pip_run_state(p) # "ready"
+#' @export
+pip_run_state <- function(x) {
+    .assert_pip_or_view(x)
+    as.character(.pip_pipenv(x)[[".run_state"]])
+}
+
+
+#' Unwrap a parameter value before a step function is called
+#'
+#' `pip_param_value()` is an extension point for packages that store annotated
+#' values (e.g. values with units or labels, or parameter objects that carry
+#' UI metadata) as step parameters. When a step runs, the generic is applied
+#' once to each unbound argument of the step, that is, to the values that
+#' come from `params` or from the defaults of the step function, and its
+#' result is what the step function receives. The stored parameters are not
+#' changed.
+#'
+#' The default method returns `x` unchanged. Methods are meant for your own
+#' classes, not for base classes such as `numeric` or `character`. Note that
+#' this is a hook that unwraps a stored value, not an accessor: use
+#' [pip_get_params()] to read parameters from a pipeline.
+#'
+#' The generic is *not* applied to the outputs of other steps (arguments
+#' defined as `~step`), to partitions or to failure objects. An error in a
+#' method is an error of the step and is handled like any other step error,
+#' including `pip_run(on_error = "continue")`.
+#'
+#' @param x The parameter value as stored in the step.
+#' @param ... Currently unused, reserved for future extensions. Methods
+#' should accept it.
+#' @return The value the step function receives for the argument.
+#' @examples
+#' # A value that carries annotations
+#' my_number <- structure(
+#'     list(value = 1.23, label = "Number", descr = "I am an example"),
+#'     class = "foo"
+#' )
+#'
+#' # Step functions then simply see the plain value
+#' pip_param_value.foo <- function(x, ...) x$value
+#' registerS3method("pip_param_value", "foo", pip_param_value.foo)
+#'
+#' p <- pip_new() |>
+#'     pip_add("double", \(x = 1) x * 2)
+#' pip_set_params(p, list(x = my_number))
+#' pip_run(p, lgr = NULL)
+#' pip_collect(p)
+#' @seealso [pip_set_params()], [pip_run()]
+#' @export
+pip_param_value <- function(x, ...) {
+    UseMethod("pip_param_value")
+}
+
+#' @export
+pip_param_value.default <- function(x, ...) {
+    x
+}
+
+#' Apply pip_param_value() to the unbound arguments of a step call
+#'
+#' @param args Named list of all arguments of the step call.
+#' @param unbound Names of the unbound arguments.
+#' @return `args`, with the unbound arguments passed through
+#'   [pip_param_value()].
+#' @noRd
+.pip_unwrap_params <- function(args, unbound) {
+    unbound <- intersect(unbound, names(args))
+    if (length(unbound) > 0L) {
+        args[unbound] <- lapply(args[unbound], FUN = pip_param_value)
+    }
+    args
+}
+
+
 #' Get or set unbound parameters
 #'
 #' [pip_get_params()] returns the current default values of all unbound
-#' parameters of a pipeline or view, that is, parameters wired to another
-#' step's output via `~step_name` are excluded.
+#' parameters of a pipeline or view (parameters wired to another step's
+#' output via `~step_name` are excluded), including those of locked steps.
 #' [pip_set_params()] updates these parameters for the whole pipeline or
-#' or view and marks the affected steps and their downstream dependents
-#' as outdated.
+#' view. Steps whose values change are marked as outdated, together with
+#' their downstream dependents (steps that have never run stay `"new"`).
+#' Values that are [identical()] to the stored ones are skipped and don't
+#' outdate any step, unless `force = TRUE`.
 #'
 #' @note Parameters of locked steps are never changed and their state
-#' remains unchanged.
+#' remains unchanged. [pip_get_params()] still returns them, so if a locked
+#' step comes first among the steps that share a parameter name,
+#' [pip_get_params()] keeps returning the locked step's value after the
+#' parameter was set.
+#'
+#' An environment (or a reference object such as an R6 object) that was
+#' modified in place is identical to the stored one, so setting it again
+#' doesn't outdate the step unless `force = TRUE`.
 #'
 #' @param x A pipeflow pip or view.
-#' @param params Named list of parameters to set (only used by
-#' [pip_set_params()]).
+#' @param params Named list of parameters to set
+#' @param unknown How to handle `params` that are not defined in any of the
+#' selected steps, including locked ones: `"warn"` (default) signals a
+#' warning and sets the remaining parameters, `"ignore"` does so silently, and
+#' `"error"` fails before anything is changed.
+#' @param force Logical. If `TRUE`, every step that has one of the `params`
+#' is outdated (together with its downstream steps), even if the values are
+#' [identical()] to the stored ones. This refreshes steps whose inputs are
+#' environments or reference objects that were modified in place.
 #' @return For [pip_get_params()], a named list of unbound parameter values;
 #' if the same parameter name appears in multiple steps, the first
 #' occurrence in pipeline order is returned. For [pip_set_params()], the
@@ -2340,16 +2961,37 @@ pip_reset <- function(x) {
 #' p
 #' (pip_run(p))
 #'
+#' # Setting the same values again doesn't outdate any step
+#' pip_set_params(p, params = list(n = 5, factor = 2.0))
+#' p
+#'
+#' # Use force = TRUE to outdate the steps anyway
+#' pip_set_params(p, params = list(n = 5, factor = 2.0), force = TRUE)
+#' p
+#'
 #' # Setting a parameter that is not defined in the pipeline yields a warning
 #' \donttest{
 #' pip_set_params(p, params = list(nope = 1))
 #' }
+#'
+#' # ... which can be silenced or turned into an error
+#' pip_set_params(p, params = list(nope = 1), unknown = "ignore")
+#' try(pip_set_params(p, params = list(nope = 1), unknown = "error"))
 #' @export
-pip_set_params <- function(x, params = list()) {
+pip_set_params <- function(
+    x,
+    params = list(),
+    unknown = c("warn", "ignore", "error"),
+    force = FALSE
+) {
     # Input checking
     .assert_pip_or_view(x)
+    unknown <- match.arg(unknown)
     if (!is.list(params)) {
         stop("params must be a list")
+    }
+    if (!is.logical(force) || length(force) != 1L || is.na(force)) {
+        stop("force must be TRUE or FALSE")
     }
     parNames <- names(params)
     if (length(params) == 0) {
@@ -2360,12 +3002,27 @@ pip_set_params <- function(x, params = list()) {
         stop("All parameters must be named")
     }
 
-    # Narrow down the considered rows
     env <- .pip_pipenv(x)
     dat <- env[["data"]]
     rows <- .pip_view_rows(x)
-    rowsConsidered <- setdiff(rows, which(dat[["locked"]]))
 
+    # Signal parameters that are not defined in any of the selected steps,
+    # including the locked ones
+    defined <- unique(unlist(dat[["unbound"]][rows]))
+    undefined <- setdiff(parNames, defined)
+    if (length(undefined) > 0L && unknown != "ignore") {
+        msg <- paste0(
+            "Trying to set parameters not defined in the target: ",
+            toString(undefined)
+        )
+        if (unknown == "error") {
+            stop_no_call(msg)
+        }
+        warning(msg)
+    }
+
+    # Narrow down the considered rows
+    rowsConsidered <- setdiff(rows, which(dat[["locked"]]))
     if (length(rowsConsidered) == 0L) {
         message("No steps to update: all selected steps are locked")
         return(invisible(x))
@@ -2378,35 +3035,34 @@ pip_set_params <- function(x, params = list()) {
     namesAffected <- intersects[hasOverlap]
     rowsAffected <- rowsConsidered[hasOverlap]
 
-    # Signal parameters that are not defined in any of the affected steps
-    used <- unique(unlist(intersects))
-    undefined <- setdiff(parNames, used)
-    if (length(undefined) > 0L) {
-        warning(
-            "Trying to set parameters not defined in the target: ",
-            toString(undefined)
-        )
-    }
-
     if (any(hasOverlap)) {
-        # Update parameters in all affected rows
+        # Update parameters in all affected rows, skipping values that are
+        # identical to the stored ones (unless forced)
+        isChanged <- logical(length(rowsAffected))
         for (j in seq_along(rowsAffected)) {
             i <- rowsAffected[[j]]
-            names <- namesAffected[[j]]
             rowPars <- dat[["params"]][[i]]
+            names <- namesAffected[[j]]
+            if (!force) {
+                names <- Filter(
+                    \(name) !identical(rowPars[[name]], params[[name]]),
+                    names
+                )
+            }
+            if (length(names) == 0L) {
+                next
+            }
             rowPars[names] <- params[names]
             value <- list(list(rowPars)) # need to wrap in list() for call below
             data.table::set(dat, i = i, j = "params", value = value)
+            isChanged[[j]] <- TRUE
         }
 
-        # Update states of affected steps and their downstream steps
-        steps <- dat[["step"]][rowsAffected]
-        .pip_update_downstream(
-            x,
-            steps = steps,
-            what = "state",
-            value = "outdated"
-        )
+        # Update states of changed steps and their downstream steps
+        rowsChanged <- rowsAffected[isChanged]
+        if (length(rowsChanged) > 0L) {
+            .pip_outdate_downstream(x, steps = dat[["step"]][rowsChanged])
+        }
     }
 
     invisible(x)
@@ -2573,7 +3229,12 @@ pip_unlock <- function(x) {
 #' A view references the underlying pipeline without copying it, so
 #' operations like [pip_run()] and [pip_set_params()] applied to a view
 #' work directly on the underlying pipeline, but are restricted to the
-#' the steps defined by the view.
+#' steps defined by the view.
+#'
+#' A view keeps covering its steps when steps are added, removed, renamed or
+#' replaced, also through the pipeline or another view. Removed steps drop
+#' out of the view, and new steps are not added to it, even if they match
+#' the filters.
 #'
 #' @param x A pipeflow pipeline or view.
 #' @param ... Named filters, which can be one or more of `step`, `params`,
@@ -2588,7 +3249,8 @@ pip_unlock <- function(x) {
 #' @param fixed If TRUE, values in `...` are treated as fixed strings,
 #' otherwise they are treated as regular expressions.
 #'
-#' @return A `pipeflow_view` object.
+#' @return A view: a `pipeflow` object that shares the pipeline's state and
+#' covers the selected steps.
 #' @export
 #' @examples
 #' p <- pip_new() |>
@@ -2680,5 +3342,5 @@ pip_view <- function(x, ..., join = c("intersect", "union"), fixed = TRUE) {
     }
 
     rows <- parent_rows[which(keep)]
-    .wrap_pipenv(env, name = sprintf("%s view", x[["name"]]), view = rows)
+    .wrap_pipenv(env, name = x[["name"]], view = .pip_rows_to_view(env, rows))
 }

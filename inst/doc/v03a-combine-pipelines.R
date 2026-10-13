@@ -81,6 +81,25 @@ pip_run(pip)
 ## -------------------------------------------------------------------------------------------------
 pip[["predict", "out"]]
 
+## ----save-pipeline--------------------------------------------------------------------------------
+file <- tempfile(fileext = ".rds")
+saveRDS(pip, file)
+
+pip_restored <- readRDS(file)
+pip_restored
+
+## ----run-restored-pipeline------------------------------------------------------------------------
+pip_set_params(pip_restored, params = list(k = 4))
+pip_run(pip_restored)
+
+pip_restored[["predict", "out"]]
+
+## ----original-unchanged---------------------------------------------------------------------------
+pip_get_params(pip)$k
+
+## ----remove-file, include = FALSE-----------------------------------------------------------------
+unlink(file)
+
 ## ----include = FALSE----------------------------------------------------------
 options(old)
 

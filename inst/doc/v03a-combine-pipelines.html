@@ -5351,8 +5351,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -5653,6 +5654,8 @@ pipeline</a>
 indexing</a></li>
 </ul></li>
 <li><a href="#combined-pipeline-results" id="toc-combined-pipeline-results">Combined pipeline results</a></li>
+<li><a href="#saving-and-restoring-pipelines" id="toc-saving-and-restoring-pipelines">Saving and restoring
+pipelines</a></li>
 </ul>
 </div>
 
@@ -5702,8 +5705,8 @@ pipeline,</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">do.call</span>(visNetwork, <span class="at">args =</span> <span class="fu">pip_graph</span>(pip)) <span class="sc">|&gt;</span></span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    <span class="fu">visHierarchicalLayout</span>(<span class="at">direction =</span> <span class="st">&quot;LR&quot;</span>)</span></code></pre></div>
-<div id="htmlwidget-f9cac66e6446108b5d55" style="width:500px;height:250px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f9cac66e6446108b5d55">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff"]},"edges":{"from":[0,1,3,4],"to":[1,2,4,5],"arrows":["to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":500,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-f6d95e4d3137bab243a8" style="width:500px;height:250px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f6d95e4d3137bab243a8">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff"]},"edges":{"from":[0,1,3,4],"to":[1,2,4,5],"arrows":["to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":500,"height":250,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 <p>the two pipelines are not yet connected. To make sense of the
 combined pipeline, we want to use the output of the
 <code>standardize</code> step as the input of the <code>data2</code>
@@ -5714,20 +5717,20 @@ which was introduced in the previous vignette <a href="v02-modify-pipeline.html"
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>pip</span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; preprocess-model (6 steps)</span></span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#           step  params     depends    state</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 1:        data       x                  new</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 2:        prep       x        data      new</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 3: standardize x,scale        prep      new</span></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 4:       data2       x standardize      new</span></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 5:         fit   x,k,b       data2 outdated</span></span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># 6:     predict       x         fit outdated</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#           step  params     depends state</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 1:        data       x               new</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># 2:        prep       x        data   new</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># 3: standardize x,scale        prep   new</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># 4:       data2       x standardize   new</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># 5:         fit   x,k,b       data2   new</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># 6:     predict       x         fit   new</span></span>
 <span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
 <span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
 <p>The <code>data2</code> step points to the output of the
 <code>standardize</code> step, so that both pipelines are now
 connected.</p>
-<div id="htmlwidget-416d23e7e33480adb460" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-416d23e7e33480adb460">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#ffa040ff","#ffa040ff"]},"edges":{"from":[0,1,2,3,4],"to":[1,2,3,4,5],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-692ab95a44ca6b3b5f5b" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-692ab95a44ca6b3b5f5b">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff","#47b8ffff"]},"edges":{"from":[0,1,2,3,4],"to":[1,2,3,4,5],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 <div id="relative-indexing" class="section level4">
 <h4>Relative indexing</h4>
 <p>Since the name of the re-routed step might not always be known<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>, the
@@ -5740,13 +5743,13 @@ above.</p>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>pip</span>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; preprocess-model (6 steps)</span></span>
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#           step  params     depends    state</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># 1:        data       x                  new</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># 2:        prep       x        data      new</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 3: standardize x,scale        prep      new</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 4:       data2       x standardize      new</span></span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># 5:         fit   x,k,b       data2 outdated</span></span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># 6:     predict       x         fit outdated</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#           step  params     depends state</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># 1:        data       x               new</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># 2:        prep       x        data   new</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># 3: standardize x,scale        prep   new</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co"># 4:       data2       x standardize   new</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># 5:         fit   x,k,b       data2   new</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co"># 6:     predict       x         fit   new</span></span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
 <span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: never</span></span></code></pre></div>
 <p>The relative indexing mechanism allows to refer to steps positioned
@@ -5760,33 +5763,78 @@ on.</p>
 <p>Let’s now run the combined pipeline and inspect the results of the
 final step.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.777 UTC]: Starting run of pipeflow &#39;preprocess-model&#39;</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.777 UTC]: Step 1/6 data</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.777 UTC]: Step 2/6 prep</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.778 UTC]: Step 3/6 standardize</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.779 UTC]: Step 4/6 data2</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.780 UTC]: Step 5/6 fit</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.781 UTC]: Step 6/6 predict</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.782 UTC]: Finished run of pipeflow &#39;preprocess-model&#39;</span></span></code></pre></div>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.087 UTC]: Starting run of pipeflow &#39;preprocess-model&#39;</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.088 UTC]: Step 1/6 data</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.088 UTC]: Step 2/6 prep</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.089 UTC]: Step 3/6 standardize</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.090 UTC]: Step 4/6 data2</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.091 UTC]: Step 5/6 fit</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.092 UTC]: Step 6/6 predict</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:53.092 UTC]: Finished run of pipeflow &#39;preprocess-model&#39;</span></span></code></pre></div>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>pip[[<span class="st">&quot;predict&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># [1] &quot;pred: 8&quot;  &quot;pred: 12&quot; &quot;pred: 16&quot; &quot;pred: 20&quot; &quot;pred: 24&quot;</span></span></code></pre></div>
 <p>As we can see, the outputs of the preprocessing pipeline flow into
 the modelling pipeline. We can now go ahead and for example change the
 multiplier of the <code>fit</code> step and rerun the pipeline.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="dv">3</span>))</span></code></pre></div>
-<div id="htmlwidget-0390a3d2ac0bd1406662" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-0390a3d2ac0bd1406662">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#87ff6fff","#87ff6fff","#87ff6fff","#87ff6fff","#ffa040ff","#ffa040ff"]},"edges":{"from":[0,1,2,3,4],"to":[1,2,3,4,5],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-4c1b3f6db19235d262fe" style="width:700px;height:100px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4c1b3f6db19235d262fe">{"x":{"nodes":{"id":[0,1,2,3,4,5],"label":["data","prep","standardize","data2","fit","predict"],"shape":["hexagon","hexagon","hexagon","hexagon","hexagon","hexagon"],"color":["#87ff6fff","#87ff6fff","#87ff6fff","#87ff6fff","#ffa040ff","#ffa040ff"]},"edges":{"from":[0,1,2,3,4],"to":[1,2,3,4,5],"arrows":["to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR","sortMethod":"directed"}}},"groups":null,"width":700,"height":100,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Starting run of pipeflow &#39;preprocess-model&#39;</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Step 1/6 data - skipping done step</span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Step 2/6 prep - skipping done step</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Step 3/6 standardize - skipping done step</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Step 4/6 data2 - skipping done step</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.836 UTC]: Step 5/6 fit</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.837 UTC]: Step 6/6 predict</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># info [2026-09-27 18:21:14.838 UTC]: Finished run of pipeflow &#39;preprocess-model&#39;</span></span></code></pre></div>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Starting run of pipeflow &#39;preprocess-model&#39;</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Step 1/6 data - skipping done step</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Step 2/6 prep - skipping done step</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Step 3/6 standardize - skipping done step</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Step 4/6 data2 - skipping done step</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.348 UTC]: Step 5/6 fit</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.350 UTC]: Step 6/6 predict</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:54.352 UTC]: Finished run of pipeflow &#39;preprocess-model&#39;</span></span></code></pre></div>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>pip[[<span class="st">&quot;predict&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
 <span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># [1] &quot;pred: 12&quot; &quot;pred: 18&quot; &quot;pred: 24&quot; &quot;pred: 30&quot; &quot;pred: 36&quot;</span></span></code></pre></div>
+</div>
+<div id="saving-and-restoring-pipelines" class="section level3">
+<h3>Saving and restoring pipelines</h3>
+<p>A pipeline, like the combined one above, can be built once and reused
+later, also in another R session. To this end, it can be saved to a file
+with <code>saveRDS()</code> and read back with <code>readRDS()</code><a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>file <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.rds&quot;</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">saveRDS</span>(pip, file)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>pip_restored <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(file)</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>pip_restored</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; preprocess-model (6 steps)</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co">#           step  params     depends state                                          out</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co"># 1:        data       x              done                                    1,2,3,4,5</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co"># 2:        prep       x        data  done                                    2,3,4,5,6</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co"># 3: standardize x,scale        prep  done                                4, 6, 8,10,12</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="co"># 4:       data2       x standardize  done                                4, 6, 8,10,12</span></span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a><span class="co"># 5:         fit   x,k,b       data2  done                               12,18,24,30,36</span></span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a><span class="co"># 6:     predict       x         fit  done pred: 12,pred: 18,pred: 24,pred: 30,pred: 36</span></span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a><span class="co"># -------------------------------------</span></span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:15:54</span></span></code></pre></div>
+<p>The restored pipeline has all steps, parameters, outputs and states
+of the saved one. That is, it can be modified and run right away, and
+only the steps that need an update are run again:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip_restored, <span class="at">params =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="dv">4</span>))</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">pip_run</span>(pip_restored)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Starting run of pipeflow &#39;preprocess-model&#39;</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Step 1/6 data - skipping done step</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Step 2/6 prep - skipping done step</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Step 3/6 standardize - skipping done step</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Step 4/6 data2 - skipping done step</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.370 UTC]: Step 5/6 fit</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.372 UTC]: Step 6/6 predict</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># info [2026-10-13 14:15:55.373 UTC]: Finished run of pipeflow &#39;preprocess-model&#39;</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>pip_restored[[<span class="st">&quot;predict&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># [1] &quot;pred: 16&quot; &quot;pred: 24&quot; &quot;pred: 32&quot; &quot;pred: 40&quot; &quot;pred: 48&quot;</span></span></code></pre></div>
+<p>Both the saved and the restored pipelines are independent of each
+other, so the original <code>pip</code> still uses the multiplier
+<code>k = 3</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">pip_get_params</span>(pip)<span class="sc">$</span>k</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># [1] 3</span></span></code></pre></div>
+<p>For more details see also the section “Saving pipelines” in the help
+of <code>pip_new()</code>.</p>
 <p>Whether you combine them or not, in practice pipelines can get long
 quickly. The next vignette shows how you can easily focus on certain
 parts of your entire analysis workflow by <a href="v03b-pipeline-views.html">Pipeline views</a>.</p>
@@ -5802,6 +5850,8 @@ the wrong abstraction”.<a href="#fnref1" class="footnote-back">↩︎</a></p><
 keep the focus on the combine functionality.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
 <li id="fn3"><p>A typical example would be appending several pipelines
 in a programmatic context.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<li id="fn4"><p> Other ways to serialize R objects work as well, for
+example to send a pipeline to another R process.<a href="#fnref4" class="footnote-back">↩︎</a></p></li>
 </ol>
 </div>
 

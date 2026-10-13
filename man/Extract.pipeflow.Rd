@@ -80,6 +80,14 @@ Boolean filters may reference the columns of the step table (\code{step}, \code{
 (e.g. \verb{\%like\%}, \verb{\%chin\%}, \verb{\%between\%}) are available. \code{p[]} returns a copy
 of the pipeline.
 
+Note that \code{tags} is a list column, so \verb{\%like\%} matches the pattern against
+the tags of each step converted to a single string, e.g. \code{"character(0)"}
+for a step without tags and \code{'c("io", "daily")'} for a step with two tags.
+A pattern can therefore also match untagged steps (e.g.
+\code{tags \%like\% "a"}), and anchored patterns such as \code{"^io$"} miss steps with
+several tags. To match tags exactly, use the \code{tags} argument of
+\code{\link[=pip_view]{pip_view()}}, e.g. \code{pip_view(p, tags = "io")}.
+
 When \code{j} is provided, the selected steps are returned as a step-table
 extraction rather than a pipeline. \code{j} must be a character vector of column
 names: \code{p[, j]} keeps those columns for all steps and \code{p[i, j]} first
@@ -102,8 +110,8 @@ In addition, a few meta fields are accessible by name.
 The following meta fields are available via \code{p[["..."]]} (or \code{p$...}):
 \itemize{
 \item \code{name} -- the name of the pipeline.
-\item \code{view} -- the absolute row indices of the steps covered by a view, or
-\code{NULL} for a full pipeline.
+\item \code{view} -- the names of the steps covered by a view, or \code{NULL} for a full
+pipeline.
 \item \code{pipenv} -- the shared inner environment holding the pipeline's state.
 All views and extracted subsets reference the same environment, so
 mutations are shared. The step table is available as
@@ -153,7 +161,7 @@ integer row index and \code{property} selects what to update:
 downstream dependencies; same as \code{pip_remove(p, step, force = TRUE)}
 }
 \item \code{p[[step, "fun"]] <- fun} -- replace the step's function;
-same as \code{\link[=pip_replace]{pip_replace()}}) but tags and execution mode are kept
+same as \code{\link[=pip_replace]{pip_replace()}}, that is, tags and execution mode are kept
 \item \code{p[[step, "params"]] <- list(...)} -- update the step's parameters;
 same as \code{pip_set_params(p, list(...))}
 \item \code{p[[step, "tags"]] <- tags} -- set the step's tags explicitly to \code{tags}
@@ -288,8 +296,8 @@ p[[2, "state"]]          # state of the second step
 
 # Views behave analogously:
 v <- pip_view(p, step = c("load", "fit"))
-v[["name"]]              # "pipe view"
-v[["view"]]              # row indices of the covered steps
+v[["name"]]              # "pipe"
+v[["view"]]              # "load", "fit" - the covered steps
 
 v[["step"]]              # c(load = "load", fit = "fit")
 v[["out"]]               # c(load = 1, fit = 2)

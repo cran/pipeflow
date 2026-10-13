@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Handling failures</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Handling failures</h1>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#a-pipeline-that-fails" id="toc-a-pipeline-that-fails">A
+pipeline that fails</a></li>
+<li><a href="#stop-at-the-first-error" id="toc-stop-at-the-first-error">Stop at the first error</a></li>
+<li><a href="#continue-after-errors" id="toc-continue-after-errors">Continue after errors</a></li>
+<li><a href="#mitigate-failed-inputs-with-try" id="toc-mitigate-failed-inputs-with-try">Mitigate failed inputs with
+<code>try()</code></a></li>
+<li><a href="#recover-from-failures" id="toc-recover-from-failures">Recover from failures</a></li>
+<li><a href="#failures-in-split-pipelines" id="toc-failures-in-split-pipelines">Failures in split
+pipelines</a></li>
+<li><a href="#summary" id="toc-summary">Summary</a></li>
+</ul>
+</div>
+
+<p>In practice, steps fail: data is missing, a model does not converge,
+or an input violates an assumption. This vignette shows how {pipeflow}
+reports such failures, how a run can be continued for unaffected steps,
+and how to pick up the pieces once the cause is fixed.</p>
+<div id="a-pipeline-that-fails" class="section level3">
+<h3>A pipeline that fails</h3>
+<p>We use a small pipeline whose <code>check</code> step fails if the
+data exceeds a limit.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pipeflow)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;analysis&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">n =</span> <span class="dv">5</span>) <span class="fu">seq_len</span>(n)) <span class="sc">|&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;check&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>data, <span class="at">limit =</span> <span class="dv">3</span>) {</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="cf">if</span> (<span class="fu">max</span>(x) <span class="sc">&gt;</span> limit) <span class="fu">stop</span>(<span class="st">&quot;data exceeds limit&quot;</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>        x</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    }) <span class="sc">|&gt;</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>check) <span class="fu">mean</span>(x)) <span class="sc">|&gt;</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;total&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>data) <span class="fu">sum</span>(x))</span></code></pre></div>
+<p>With <code>n = 5</code> and <code>limit = 3</code>, the
+<code>check</code> step will fail, and the <code>model</code> step
+downstream of it cannot run. The <code>total</code> step, however, only
+needs the <code>data</code> step.</p>
+</div>
+<div id="stop-at-the-first-error" class="section level3">
+<h3>Stop at the first error</h3>
+<p>By default, <code>pip_run()</code> stops at the first step that
+fails.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:48.770 UTC]: Starting run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:48.770 UTC]: Step 1/4 data</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:48.771 UTC]: Step 2/4 check</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># error [2026-10-13 14:16:48.773 UTC]: data exceeds limit</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># Error:</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># ! step &#39;check&#39;: data exceeds limit</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>pip</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; analysis (4 steps)</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#     step  params depends  state       out</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co"># 1:  data       n           done 1,2,3,4,5</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co"># 2: check x,limit    data failed    [NULL]</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co"># 3: model       x   check    new    [NULL]</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co"># 4: total       x    data    new    [NULL]</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co"># &lt;failed&gt; last run: 2026-10-13 16:16:48</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="fu">pip_run_state</span>(pip)</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co"># [1] &quot;failed&quot;</span></span></code></pre></div>
+<p>The pipeline stays in a defined state. The failed step is marked as
+<code>failed</code>, the steps that were not reached are still
+<code>new</code>, and the run state indicates that the last run ended
+with an error.</p>
+<p>Let’s inspect the error object returned by
+<code>tryCatch()</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>err <span class="ot">&lt;-</span> <span class="fu">tryCatch</span>(<span class="fu">pip_run</span>(pip, <span class="at">lgr =</span> <span class="cn">NULL</span>), <span class="at">error =</span> \(e) e)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="fu">class</span>(err)</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># [1] &quot;pipeflow_step_error&quot; &quot;error&quot;               &quot;condition&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>err<span class="sc">$</span>step</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># [1] &quot;check&quot;</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">class</span>(err<span class="sc">$</span>parent)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>err<span class="sc">$</span>parent<span class="sc">$</span>message</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># [1] &quot;data exceeds limit&quot;</span></span></code></pre></div>
+<p>The error is of class <code>pipeflow_step_error</code>. Its field
+<code>step</code> names the failed step and the field
+<code>parent</code> holds the original condition, which keeps its own
+class, so that errors can be handled by class:</p>
+</div>
+<div id="continue-after-errors" class="section level3">
+<h3>Continue after errors</h3>
+<p>In the previous run, the <code>total</code> step was not run,
+although it does not depend on the failed step, because the run stopped
+early. With <code>on_error = &quot;continue&quot;</code> in
+<code>pip_run()</code>, a failing step is still marked as failed but the
+run can continue for all other steps that do not depend on it:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>pip<span class="sc">$</span><span class="fu">reset</span>()</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">suppressWarnings</span>(<span class="fu">pip_run</span>(pip, <span class="at">on_error =</span> <span class="st">&quot;continue&quot;</span>))</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.571 UTC]: Starting run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.571 UTC]: Step 1/4 data</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.572 UTC]: Step 2/4 check</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># error [2026-10-13 14:16:49.574 UTC]: data exceeds limit</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.575 UTC]: Step 3/4 model - skipping step, input &#39;x&#39; failed</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.575 UTC]: Step 4/4 total</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:49.576 UTC]: Finished run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># warn [2026-10-13 14:16:49.577 UTC]: Run of pipeline &#39;analysis&#39; continued after 1 failed step:</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co">#   &#39;check&#39;: data exceeds limit</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># Steps not run because an input failed: &#39;model&#39;</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>pip</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; analysis (4 steps)</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="co">#     step  params depends  state                 out</span></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="co"># 1:  data       n           done           1,2,3,4,5</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="co"># 2: check x,limit    data failed &lt;error/simpleError&gt;</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a><span class="co"># 3: model       x   check    new              [NULL]</span></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co"># 4: total       x    data   done                  15</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="co"># &lt;continued&gt; last run: 2026-10-13 16:16:49</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="fu">pip_run_state</span>(pip)</span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a><span class="co"># [1] &quot;continued&quot;</span></span></code></pre></div>
+<p>Now <code>total</code> was calculated, while <code>model</code> was
+skipped, because its input depends on the failed step. The
+<code>out</code> column of a failed step holds the condition, which is
+printed in short form as <code>&lt;kind/class&gt;</code>.</p>
+<p>To work with it programmatically, we can extract it as usual:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>out <span class="ot">&lt;-</span> pip[[<span class="st">&quot;check&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">class</span>(out)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>out<span class="sc">$</span>message</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># [1] &quot;data exceeds limit&quot;</span></span></code></pre></div>
+<p>Let’s inspect the warning object returned by
+<code>tryCatch()</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">tryCatch</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="fu">pip_run</span>(pip, <span class="at">lgr =</span> <span class="cn">NULL</span>, <span class="at">on_error =</span> <span class="st">&quot;continue&quot;</span>),</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="at">warning =</span> \(w) w</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>)</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">names</span>(w<span class="sc">$</span>failed)</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># [1] &quot;check&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>w<span class="sc">$</span>skipped</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># [1] &quot;model&quot;</span></span></code></pre></div>
+<p>The warning is signalled after all states and outputs are stored, so
+catching it with <code>tryCatch()</code> does not lose any results.</p>
+</div>
+<div id="mitigate-failed-inputs-with-try" class="section level3">
+<h3>Mitigate failed inputs with <code>try()</code></h3>
+<p>Sometimes a step should run even if one of its inputs failed, for
+example a report that mentions what is missing or if a fallback is
+available. Such an argument is marked by wrapping the step reference in
+<code>try()</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">pip_add</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    pip,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="st">&quot;report&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    \(<span class="at">total =</span> <span class="sc">~</span>total, <span class="at">m =</span> <span class="sc">~</span><span class="fu">try</span>(model)) {</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>        <span class="cf">if</span> (<span class="fu">inherits</span>(m, <span class="st">&quot;pipeflow_failure&quot;</span>)) {</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>            <span class="fu">paste</span>(<span class="st">&quot;total:&quot;</span>, total, <span class="st">&quot;- no model:&quot;</span>, m<span class="sc">$</span>message)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>            <span class="fu">paste</span>(<span class="st">&quot;total:&quot;</span>, total, <span class="st">&quot;- mean:&quot;</span>, m)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>        }</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>    }</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>)</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="fu">suppressWarnings</span>(<span class="fu">pip_run</span>(pip, <span class="at">on_error =</span> <span class="st">&quot;continue&quot;</span>))</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.606 UTC]: Starting run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.606 UTC]: Step 1/5 data - skipping done step</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.606 UTC]: Step 2/5 check</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co"># error [2026-10-13 14:16:50.609 UTC]: data exceeds limit</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.610 UTC]: Step 3/5 model - skipping step, input &#39;x&#39; failed</span></span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.610 UTC]: Step 4/5 total - skipping done step</span></span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.610 UTC]: Step 5/5 report</span></span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.612 UTC]: Finished run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co"># warn [2026-10-13 14:16:50.613 UTC]: Run of pipeline &#39;analysis&#39; continued after 1 failed step:</span></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#   &#39;check&#39;: data exceeds limit</span></span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co"># Steps not run because an input failed: &#39;model&#39;</span></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a>pip[[<span class="st">&quot;report&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="co"># [1] &quot;total: 15 - no model: step &#39;model&#39; was not run: step &#39;check&#39; failed: data exceeds limit&quot;</span></span></code></pre></div>
+<p>Instead of the output of <code>model</code>, the <code>m</code>
+argument received a <em>failure object</em>, a condition of class
+<code>pipeflow_failure</code>, which stands in for the missing output.
+The message tells why the input is not available. It has the fields</p>
+<ul>
+<li><code>step</code>: the step that provided the input
+(<code>model</code>),</li>
+<li><code>failed_step</code>: the step that actually failed
+(<code>check</code>), and</li>
+<li><code>parent</code>: the original error condition.</li>
+</ul>
+<p>A step is only run despite a failed input if <em>all</em> its failed
+inputs are marked with <code>try()</code>. Everything else is skipped,
+as <code>model</code> above. Note that <code>try()</code> has an effect
+only in a continuing run. With <code>on_error = &quot;stop&quot;</code>, the run
+ends at the failed step anyway.</p>
+</div>
+<div id="recover-from-failures" class="section level3">
+<h3>Recover from failures</h3>
+<p>Both skipped and failed steps are retried in the next run, and so are
+steps that got a failure object. Steps that were completed are not run
+again. Let’s fix the cause by raising the limit and re-run:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="fu">list</span>(<span class="at">limit =</span> <span class="dv">10</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.986 UTC]: Starting run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.986 UTC]: Step 1/5 data - skipping done step</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.986 UTC]: Step 2/5 check</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.987 UTC]: Step 3/5 model</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.989 UTC]: Step 4/5 total - skipping done step</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.989 UTC]: Step 5/5 report</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:50.992 UTC]: Finished run of pipeflow &#39;analysis&#39;</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>pip</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; analysis (5 steps)</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co">#      step  params     depends state                 out</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co"># 1:   data       n              done           1,2,3,4,5</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co"># 2:  check x,limit        data  done           1,2,3,4,5</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co"># 3:  model       x       check  done                   3</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co"># 4:  total       x        data  done                  15</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co"># 5: report total,m total,model  done total: 15 - mean: 3</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:50</span></span></code></pre></div>
+<p>The run log shows that <code>data</code> and <code>total</code> were
+skipped, since they were completed already. The failed step
+<code>check</code> and the skipped step <code>model</code> were executed
+now, and so was <code>report</code>, because it had received a failure
+object instead of the real output. The report now contains the model
+result and the run state is <code>ready</code> again.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>pip[[<span class="st">&quot;report&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># [1] &quot;total: 15 - mean: 3&quot;</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="fu">pip_run_state</span>(pip)</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># [1] &quot;ready&quot;</span></span></code></pre></div>
+</div>
+<div id="failures-in-split-pipelines" class="section level3">
+<h3>Failures in split pipelines</h3>
+<p>Failures also work with the execution modes <code>split</code> and
+<code>reduce</code>, which are described in the vignette on <a href="v05a-split-map-reduce.html">split, map, and reduce</a>. Let’s
+split a small data set by group and let the <code>spread</code> step
+fail for groups with a single row.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">g =</span> <span class="fu">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>), <span class="at">y =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">8</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;groups&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">data =</span> <span class="cn">NULL</span>) data) <span class="sc">|&gt;</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;by_group&quot;</span>, \(<span class="at">data =</span> <span class="sc">~</span>data) <span class="fu">split</span>(data, data<span class="sc">$</span>g), <span class="at">exec =</span> <span class="st">&quot;split&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;spread&quot;</span>, \(<span class="at">d =</span> <span class="sc">~</span>by_group) {</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>        <span class="cf">if</span> (<span class="fu">nrow</span>(d) <span class="sc">&lt;</span> <span class="dv">2</span>) <span class="fu">stop</span>(<span class="st">&quot;need at least 2 rows&quot;</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>        <span class="fu">diff</span>(<span class="fu">range</span>(d<span class="sc">$</span>y))</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>    }) <span class="sc">|&gt;</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>    <span class="fu">pip_add</span>(</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>        <span class="st">&quot;combine&quot;</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>        \(<span class="at">s =</span> <span class="sc">~</span><span class="fu">try</span>(spread)) {</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>            <span class="cf">if</span> (<span class="fu">inherits</span>(s, <span class="st">&quot;pipeflow_failure&quot;</span>)) {</span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>                <span class="fu">return</span>(s<span class="sc">$</span>message)</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>            }</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>            <span class="fu">unlist</span>(s)</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>        },</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>        <span class="at">exec =</span> <span class="st">&quot;reduce&quot;</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>    )</span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="fu">list</span>(<span class="at">data =</span> d))</span></code></pre></div>
+<p>If one partition (group <code>c</code>) fails, the whole
+<code>spread</code> step fails. The condition tells the failed key and
+keeps the original one as <code>parent</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">suppressWarnings</span>(<span class="fu">pip_run</span>(pip, <span class="at">on_error =</span> <span class="st">&quot;continue&quot;</span>))</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.040 UTC]: Starting run of pipeflow &#39;groups&#39;</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.040 UTC]: Step 1/4 data</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.041 UTC]: Step 2/4 by_group</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.042 UTC]: Step 3/4 spread</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co"># error [2026-10-13 14:16:52.045 UTC]: key &#39;c&#39;: need at least 2 rows</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.045 UTC]: Step 4/4 combine</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.046 UTC]: Finished run of pipeflow &#39;groups&#39;</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co"># warn [2026-10-13 14:16:52.047 UTC]: Run of pipeline &#39;groups&#39; continued after 1 failed step:</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#   &#39;spread&#39;: key &#39;c&#39;: need at least 2 rows</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>pip</span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co"># &lt;pipeflow&gt; groups (4 steps)</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">#        step params  depends  state                                         out   exec</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a><span class="co"># 1:     data   data            done                           &lt;data.frame[5x2]&gt;   auto</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a><span class="co"># 2: by_group   data     data   done                                   &lt;list[3]&gt;  split</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a><span class="co"># 3:   spread      d by_group failed                  &lt;error/pipeflow_key_error&gt;   auto</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a><span class="co"># 4:  combine      s   spread   done step &#39;spread&#39; failed: key &#39;c&#39;: need at l... reduce</span></span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a><span class="co"># &lt;continued&gt; last run: 2026-10-13 16:16:52</span></span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a></span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a>err <span class="ot">&lt;-</span> pip[[<span class="st">&quot;spread&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a><span class="fu">class</span>(err)</span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co"># [1] &quot;pipeflow_key_error&quot; &quot;error&quot;              &quot;condition&quot;</span></span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a>err<span class="sc">$</span>key</span>
+<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a><span class="co"># [1] &quot;c&quot;</span></span>
+<span id="cb11-28"><a href="#cb11-28" tabindex="-1"></a>err<span class="sc">$</span>parent<span class="sc">$</span>message</span>
+<span id="cb11-29"><a href="#cb11-29" tabindex="-1"></a><span class="co"># [1] &quot;need at least 2 rows&quot;</span></span></code></pre></div>
+<p>The <code>combine</code> step reduces the outputs of all groups.
+Since the input <code>spread</code> failed and is marked with
+<code>try()</code>, <code>combine</code> ran once and received the
+failure object, with the key in the message:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>pip[[<span class="st">&quot;combine&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># [1] &quot;step &#39;spread&#39; failed: key &#39;c&#39;: need at least 2 rows&quot;</span></span></code></pre></div>
+<p>Likewise, if the pipeline is run with <code>on_error = &quot;stop&quot;</code>,
+the error is a <code>pipeflow_step_error</code> as before, with the
+<code>pipeflow_key_error</code> as its <code>parent</code>. Without
+<code>try()</code> in the <code>combine</code> step, it would just be
+skipped.</p>
+<p>Failures are currently tracked per step, not per key, so the groups
+<code>a</code> and <code>b</code> that were fine are not available as
+results of a run that failed in group <code>c</code>. Once the cause is
+fixed, here by removing the group, the pipeline completes:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">pip_set_params</span>(pip, <span class="fu">list</span>(<span class="at">data =</span> d[d<span class="sc">$</span>g <span class="sc">!=</span> <span class="st">&quot;c&quot;</span>, ]))</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">pip_run</span>(pip)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.698 UTC]: Starting run of pipeflow &#39;groups&#39;</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.698 UTC]: Step 1/4 data</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.698 UTC]: Step 2/4 by_group</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.700 UTC]: Step 3/4 spread</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.701 UTC]: Step 4/4 combine</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># info [2026-10-13 14:16:52.703 UTC]: Finished run of pipeflow &#39;groups&#39;</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>pip[[<span class="st">&quot;combine&quot;</span>, <span class="st">&quot;out&quot;</span>]]</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co"># a b </span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co"># 1 2</span></span></code></pre></div>
+</div>
+<div id="summary" class="section level3">
+<h3>Summary</h3>
+<ul>
+<li>By default, a failing step stops the run with a
+<code>pipeflow_step_error</code> that names the step and holds the
+original condition in <code>parent</code>.</li>
+<li><code>pip_run(on_error = &quot;continue&quot;)</code> marks the step as
+<code>failed</code>, stores its condition as output, skips the steps
+that depend on it, and runs everything else. The run state becomes
+<code>continued</code>, and a <code>pipeflow_run_failed</code> warning
+lists both failed and skipped steps.</li>
+<li>A reference wrapped in <code>try()</code>,
+e.g. <code>x = ~try(step)</code>, makes a step run despite a failed
+input. The argument then receives a <code>pipeflow_failure</code>
+condition.</li>
+<li>The next run retries any failed and skipped steps (and those that
+received failure objects).</li>
+<li>For steps that map over partitions, the condition of the failed
+partition is a <code>pipeflow_key_error</code> with the field
+<code>key</code>. A <code>reduce</code> step with a <code>try()</code>
+reference receives the failure.</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

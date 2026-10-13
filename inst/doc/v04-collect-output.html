@@ -48,8 +48,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -366,14 +367,18 @@ functions are kept very basic.</p>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>pip <span class="ot">&lt;-</span> <span class="fu">pip_new</span>(<span class="st">&quot;my-pip&quot;</span>) <span class="sc">|&gt;</span></span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data&quot;</span>, \(<span class="at">x =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) x) <span class="sc">|&gt;</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;prep&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>data) x <span class="sc">*</span> <span class="dv">2</span>, <span class="at">tags =</span> <span class="st">&quot;data&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep) <span class="fu">range</span>(x),</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_fit&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep, <span class="at">k =</span> <span class="dv">2</span>) x <span class="sc">*</span> k, <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;fit&quot;</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>model_fit) <span class="fu">sum</span>(x),</span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>    )</span></code></pre></div>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;prep&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>data) x <span class="sc">*</span> <span class="dv">2</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>        <span class="at">tags =</span> <span class="st">&quot;data&quot;</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;data_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep) <span class="fu">range</span>(x),</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_fit&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>prep, <span class="at">k =</span> <span class="dv">2</span>) x <span class="sc">*</span> k,</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;fit&quot;</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    <span class="fu">pip_add</span>(<span class="st">&quot;model_summary&quot;</span>, \(<span class="at">x =</span> <span class="sc">~</span>model_fit) <span class="fu">sum</span>(x),</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>        <span class="at">tags =</span> <span class="fu">c</span>(<span class="st">&quot;model&quot;</span>, <span class="st">&quot;summary&quot;</span>)</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    )</span></code></pre></div>
 <p>As introduced in the <a href="v03b-pipeline-views.html">previous
 vignette</a>, we use tags to label steps, specifically,
 <code>&quot;data&quot;</code>/<code>&quot;model&quot;</code> to distinguish the topic, and
@@ -390,7 +395,7 @@ column.</p>
 <span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co"># 4:     model_fit    x,k      prep  done  4, 8,12,16,20     model,fit</span></span>
 <span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># 5: model_summary      x model_fit  done             60 model,summary</span></span>
 <span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:05</span></span></code></pre></div>
 </div>
 <div id="flat-output-collection" class="section level3">
 <h3>Flat output collection</h3>
@@ -454,7 +459,7 @@ report.</p>
 <span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># 4:     model_fit    x,k      prep  done  4, 8,12,16,20       model,fit,Model</span></span>
 <span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># 5: model_summary      x model_fit  done             60 model,summary,Summary</span></span>
 <span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># ---------------------------</span></span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-09-27 20:21:15</span></span></code></pre></div>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co"># &lt;ready&gt; last run: 2026-10-13 16:16:05</span></span></code></pre></div>
 <p>Naturally, we then would group the output as follows:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>report <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    <span class="at">Introduction =</span> <span class="fu">pip_view</span>(pip, <span class="at">tags =</span> <span class="st">&quot;Introduction&quot;</span>) <span class="sc">|&gt;</span> <span class="fu">pip_collect</span>(),</span>

@@ -1,3 +1,74 @@
+# pipeflow 0.5.0
+
+## Breaking changes
+
+- `v[["view"]]` returns the names of the covered steps instead of row
+  indices.
+- `.self` is only made available in step functions that refer to it, i.e.
+  if the name `.self` appears in the function body.
+- `pip_replace()` by default now keeps the tags and the execution mode of
+  the replaced step.
+
+## New features
+
+- `pip_run(on_error = "continue")` continues the run of unaffected steps
+  after a step failed with an error.
+- allow mitigation of inputs from failed steps via `~try()` references
+  (`x = ~try(step)`), e.g. by creating fallback results for failed steps.
+- `pip_param_value()` is a generic for unwrapping parameter values, enabling
+  to set pipeline parameters that consist of non-trivial types or classes.
+- `pip_set_params()` gains `unknown = c("warn", "ignore", "error")` for
+  parameters that no step defines, and `force = TRUE` to outdate steps even
+  if the values are identical.
+- `pip_run_state()` returns the run state of a pipeline or view.
+- The default logger `pipeflow_lgr()` is exported, so custom loggers can
+  build on it.
+- Pipelines survive `saveRDS()` and `readRDS()`, and can be sent to other R
+  processes (see `?pip_new`).
+
+## Changes
+
+- `pip_set_params()` no longer outdates steps if the values are identical to
+  the stored ones.
+- Errors from `pip_run()` name the step (`step 'fit': ...`) and have class
+  `pipeflow_step_error` with the fields `step` and `parent`. A failing
+  partition key gives a `pipeflow_key_error` with `key` and `parent`.
+- Views keep the name of their pipeline (before: `"<name> view"`).
+- Views keep track of their steps instead of row numbers, so they stay valid
+  when steps are added, removed, renamed or replaced.
+- `pip_run()` also re-runs a `"done"` step if one of its inputs was executed
+  in the same run.
+- A run stopped by `halt()` ends in run state `"halted"` (before: `"ready"`).
+- `pip_add()` and `pip_replace()` warn if `params` contain names that are
+  also arguments of `fun`.
+- `print()` now shows conditions, matrices, arrays, tables, functions and
+  environments in the `out` column in short form, e.g. `<error/simpleError>`.
+
+## Bug fixes
+
+- Steps that never ran stay `"new"`, and a run only outdates the steps
+  downstream of steps it executed.
+- `x[[step, j]]` on a view read the wrong row.
+- Copies made by `pip_clone()`, `p[]` or `p[i, view = FALSE]` shared `.self`
+  with the original.
+- `pip_set_params()` no longer warns about parameters defined only in
+  locked steps.
+- `pip_add()` and `pip_replace()` reject primitive functions such as `sum`
+  with a clear error, and `pip_add()` calls `.self` a reserved *parameter*
+  name.
+- A step that references the same step more than once no longer warns about
+  an existing edge.
+
+## Documentation
+
+- New vignettes "Handling failures" and "Annotated parameter values".
+- "Get started", "Nested pipelines", "Self-modifying pipelines" and
+  "Combine pipelines" cover identical values, `unknown = "ignore"`, when
+  `.self` is available, and saving pipelines.
+- The benchmark vignette was revised.
+- The package website is built by a GitHub Actions workflow on release tags.
+
+
 # pipeflow 0.4.0
 
 ## New features
@@ -9,7 +80,7 @@
   - negative row indices in `p[...]` and `p[i, j] <- value`,
   - boolean filters in `p[...]` (data.table-style expressions),
   - cross-pipeline assignment to copy steps between pipelines,
-  - step removal via `p[[step]] <- NULL`,
+  - step removal via `p[[step, "step"]] <- NULL`,
   - time stamps via `p[[step, "time"]] <- value`,
   - setting or replacing views via `p[["view"]] <- ...`.
 - `pip_collect()` (formerly `pip_collect_out()`) supports grouping via a
@@ -18,7 +89,8 @@
 - `pip_data()` provides direct access to the underlying step table.
 - `pip_graph()` (formerly `pip_get_graph()`) returns visNetwork-compatible
   graph data. The old function names remain available as deprecated aliases.
-- `pip_derived_cols()` returns the names of the read-only (derived) columns.
+- The derived columns `depends`, `unbound` and `nodeId` are read-only and
+  can't be assigned directly.
 - `pip_view()` gains a `join = "union"` argument to combine filters as a
   logical OR.
 - `.self` is now automatically available inside every step function (and is

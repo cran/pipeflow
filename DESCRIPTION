@@ -1,6 +1,6 @@
 Package: pipeflow
 Title: Fast Interactive Data Analysis Pipelines
-Version: 0.4.0
+Version: 0.5.0
 Authors@R: 
     person("Roman", "Pahl", , "roman.pahl@gmail.com", role = c("aut", "cre"))
 Maintainer: Roman Pahl <roman.pahl@gmail.com>
@@ -16,8 +16,8 @@ URL: https://rpahl.github.io/pipeflow/,
 BugReports: https://github.com/rpahl/pipeflow/issues
 Depends: R (>= 4.2.0)
 Imports: data.table, Rcpp (>= 1.1.1), stats
-Suggests: ggplot2, gridExtra, knitr, mockery, rmarkdown, targets,
-        testthat, visNetwork
+Suggests: bench, ggplot2, gridExtra, knitr, mockery, rlang, rmarkdown,
+        targets, testthat, visNetwork
 LinkingTo: Rcpp
 VignetteBuilder: knitr
 Config/roxygen2/version: 8.0.0
@@ -26,7 +26,7 @@ Config/testthat/parallel: true
 Encoding: UTF-8
 Language: en-US
 NeedsCompilation: yes
-Packaged: 2026-09-27 18:21:18 UTC; roman
+Packaged: 2026-10-13 14:17:07 UTC; rpahl
 Author: Roman Pahl [aut, cre]
 Repository: CRAN
-Date/Publication: 2026-09-27 18:50:02 UTC
+Date/Publication: 2026-10-13 14:50:07 UTC

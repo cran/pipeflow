@@ -96,7 +96,7 @@ outer |> pip_replace(
 
         # Forward all parameters (from outer and inner)
         all_params <- .self$get_params()
-        pip_set_params(p, all_params)
+        pip_set_params(p, all_params, unknown = "ignore")
 
         Map(
             f = run_inner_pip,

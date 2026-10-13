@@ -120,7 +120,7 @@
         # Clone the existing DAG, drop all nodes that are not kept, and let
         # the C++ side compact the node ids. Nodes that are still alive
         # correspond to the current rows of `data`.
-        d <- dag_clone(pipenv[[".dag"]])
+        d <- dag_clone(.pip_dag(pipenv))
         dead <- setdiff(data[["nodeId"]], keepNodes)
         for (id in dead) {
             dag_remove_node(d, id, force = TRUE)
@@ -218,6 +218,14 @@
         stop("i must be a single step name or row index")
     }
     if (is.null(j)) {
+        # The `view` field holds node ids, so the covered steps are returned.
+        if (identical(i, "view")) {
+            if (!.is_pipeflow_view(x)) {
+                return(NULL)
+            }
+            return(.pip_pipenv(x)[["data"]][["step"]][.pip_view_rows(x)])
+        }
+
         # List fields of the wrapper have priority over column names.
         if (is.character(i) && length(i) == 1L && !is.na(i)) {
             if (i %in% names(x)) {
@@ -250,9 +258,10 @@
 
     data <- .pip_view_data(x)
     if (is.character(i)) {
-        # case x[[stepName, col]]
-        row <- .pip_steps_to_rows(x, steps = i)
-        if (row > nrow(data)) {
+        # case x[[stepName, col]]; the row is relative to the view's data
+        row <- data.table::chmatch(i, data[["step"]])
+        if (is.na(row)) {
+            .pip_steps_to_rows(x, steps = i) # signals unknown steps
             stop("selected step not part of view: ", i)
         }
     } else {
@@ -346,6 +355,14 @@ dim.pipeflow <- function(x) {
 #' [data.table filter operators][pipeflow-operators] re-exported by pipeflow
 #' (e.g. `%like%`, `%chin%`, `%between%`) are available. `p[]` returns a copy
 #' of the pipeline.
+#'
+#' Note that `tags` is a list column, so `%like%` matches the pattern against
+#' the tags of each step converted to a single string, e.g. `"character(0)"`
+#' for a step without tags and `'c("io", "daily")'` for a step with two tags.
+#' A pattern can therefore also match untagged steps (e.g.
+#' `tags %like% "a"`), and anchored patterns such as `"^io$"` miss steps with
+#' several tags. To match tags exactly, use the `tags` argument of
+#' [pip_view()], e.g. `pip_view(p, tags = "io")`.
 #'
 #' When `j` is provided, the selected steps are returned as a step-table
 #' extraction rather than a pipeline. `j` must be a character vector of column
@@ -453,13 +470,14 @@ dim.pipeflow <- function(x) {
 
     if (view) {
         # Return a view on the selected rows
-        return(.wrap_pipenv(pipenv, name = paste(name, "view"), view = rows))
+        selector <- .pip_rows_to_view(pipenv, rows)
+        return(.wrap_pipenv(pipenv, name = name, view = selector))
     }
 
     # Resolve all nodes reachable from the selected rows via upstream edges,
     # then build a self-contained, compact pipeline from them.
     keepNodes <- dag_get_reachable_nodes_up(
-        pipenv[[".dag"]],
+        .pip_dag(pipenv),
         as.integer(unique(dat[["nodeId"]][rows]))
     )
     out <- .pip_compact(x, keepNodes)
@@ -488,8 +506,8 @@ dim.pipeflow <- function(x) {
 #' The following meta fields are available via `p[["..."]]` (or `p$...`):
 #'
 #' * `name` -- the name of the pipeline.
-#' * `view` -- the absolute row indices of the steps covered by a view, or
-#'   `NULL` for a full pipeline.
+#' * `view` -- the names of the steps covered by a view, or `NULL` for a full
+#'   pipeline.
 #' * `pipenv` -- the shared inner environment holding the pipeline's state.
 #'   All views and extracted subsets reference the same environment, so
 #'   mutations are shared. The step table is available as
@@ -536,8 +554,8 @@ dim.pipeflow <- function(x) {
 #'
 #' # Views behave analogously:
 #' v <- pip_view(p, step = c("load", "fit"))
-#' v[["name"]]              # "pipe view"
-#' v[["view"]]              # row indices of the covered steps
+#' v[["name"]]              # "pipe"
+#' v[["view"]]              # "load", "fit" - the covered steps
 #'
 #' v[["step"]]              # c(load = "load", fit = "fit")
 #' v[["out"]]               # c(load = 1, fit = 2)
@@ -568,7 +586,7 @@ dim.pipeflow <- function(x) {
 #'   * `p[[step, "step"]] <- NULL` -- remove the step, together with its
 #'      downstream dependencies; same as `pip_remove(p, step, force = TRUE)`
 #' * `p[[step, "fun"]] <- fun` -- replace the step's function;
-#'    same as [pip_replace()]) but tags and execution mode are kept
+#'    same as [pip_replace()], that is, tags and execution mode are kept
 #' * `p[[step, "params"]] <- list(...)` -- update the step's parameters;
 #'   same as `pip_set_params(p, list(...))`
 #' * `p[[step, "tags"]] <- tags` -- set the step's tags explicitly to `tags`
@@ -700,9 +718,7 @@ dim.pipeflow <- function(x) {
             pip_rename(x, from = step, to = value)
         }
     } else if (j == "fun") {
-        tags <- data[["tags"]][[i]]
-        exec <- data[["exec"]][[i]]
-        pip_replace(x, step = step, fun = value, tags = tags, exec = exec)
+        pip_replace(x, step = step, fun = value)
     } else if (j == "params") {
         pip_set_params(pip_view(x, step = step), params = value)
     } else if (j == "out") {
@@ -943,7 +959,13 @@ dim.pipeflow <- function(x) {
 #' @param cols The columns to be printed. Can be either one of
 #' `core` or `all` to print the core or all columns, respectively,
 #' or an explicit character vector of columns to be printed. The `params`
-#' column lists the names of the step's parameters.
+#' column lists the names of the step's parameters. In the `out` column, some
+#' outputs are shown in short form: a condition (the output of a step that
+#' failed in a run with `on_error = "continue"`) as `<kind/class>`, e.g.
+#' `<error/simpleError>`; a matrix, array or table as `<class[dims]>`, e.g.
+#' `<matrix[4x2]>`; and a function or environment (e.g. an R6 object) as
+#' `<class>`. Strings longer than 40 characters are cut off and marked with
+#' `"..."`.
 #' @param topn The number of rows to be printed from the beginning
 #' and end of tables with more than `nrows` rows.
 #' @param nrows The number of rows printed before truncation is enforced.

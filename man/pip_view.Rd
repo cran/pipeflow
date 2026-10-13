@@ -26,14 +26,21 @@ filter, multiple values are always treated as alternatives (OR).
 otherwise they are treated as regular expressions.}
 }
 \value{
-A \code{pipeflow_view} object.
+A view: a \code{pipeflow} object that shares the pipeline's state and
+covers the selected steps.
 }
 \description{
 Creates a filtered view showing only a selected subset of steps.
 A view references the underlying pipeline without copying it, so
 operations like \code{\link[=pip_run]{pip_run()}} and \code{\link[=pip_set_params]{pip_set_params()}} applied to a view
 work directly on the underlying pipeline, but are restricted to the
-the steps defined by the view.
+steps defined by the view.
+}
+\details{
+A view keeps covering its steps when steps are added, removed, renamed or
+replaced, also through the pipeline or another view. Removed steps drop
+out of the view, and new steps are not added to it, even if they match
+the filters.
 }
 \examples{
 p <- pip_new() |>

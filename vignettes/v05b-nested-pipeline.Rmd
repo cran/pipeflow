@@ -166,7 +166,7 @@ outer |> pip_replace(
 
         # Forward all parameters (from outer and inner)
         all_params <- .self$get_params()
-        pip_set_params(p, all_params)
+        pip_set_params(p, all_params, unknown = "ignore")
 
         Map(
             f = run_inner_pip,
@@ -188,10 +188,11 @@ forwards the combined parameter set at run time. Three aspects are worth
 spelling out:
 
 * **`.self`** refers to the pipeline that is currently being run and is
-  available inside *every* step function without having to declare it. It
-  exposes the usual pipeline interface, so `.self$get_params()` returns the
-  current unbound parameters of the outer pipeline, and things like
-  `.self$name` or `.self$run()` work as expected. For more examples on this
+  available inside every step function that refers to it, without having
+  to declare it. It exposes the usual pipeline interface, so
+  `.self$get_params()` returns the current unbound parameters of the outer
+  pipeline, and things like `.self$name` or `.self$run()` work as
+  expected. For more examples on this
   mechanism see the
   [self-modifying pipelines](v06-self-modify-pipeline.html) vignette.
 * **`params = pip_get_params(inner)`** registers the inner pipeline's unbound
@@ -224,19 +225,14 @@ outer |>
     pip_run()
 ```
 
-Note that the warning in the log above is expected and harmless. Basically,
+Note the `unknown = "ignore"` in the replacement function above.
 `.self$get_params()` returns the outer pipeline's *entire* parameter set,
 which includes `byVar` (from the `split_data` step) while the inner
-pipeline only defines `data`, `xVar`, and `yVar`. Since `pip_set_params()`
-reports any parameters that are not defined in the target and simply leaves
-them unset, the inner pipeline still receives all parameters it knows and the
-result is unaffected.
-
-If you need to omit the warning (e.g. in production code), just suppress it:
-
-```r
-suppressWarnings(pip_set_params(p, all_params))
-```
+pipeline only defines `data`, `xVar`, and `yVar`. By default,
+`pip_set_params()` warns about parameters that are not defined in the target.
+With `unknown = "ignore"`, it silently leaves them unset, so the inner
+pipeline still receives all parameters it knows and the result is unaffected.
+Unlike `suppressWarnings()`, this does not hide any other warning.
 
 Alternatively, you could first restrict the forwarded parameters to those the
 inner pipeline actually knows. That has the same effect but adds code, and
